@@ -53,6 +53,20 @@
           <span class="readout-label">Current Scenario</span>
           <span id="surgeReadout" class="readout-value">Normal Conditions</span>
         </div>
+        <!-- Inundation impact analysis (shown when a surge scenario is active) -->
+        <div id="surgeImpact" class="impact-readout">
+          <div class="impact-head">
+            <span class="impact-dot"></span>
+            <span id="impactCount" class="impact-count">0 assets at risk</span>
+          </div>
+          <p id="impactDetail" class="impact-detail"></p>
+          <div id="impactArea" class="coverage">
+            <div class="coverage-track">
+              <div class="coverage-fill"></div>
+            </div>
+            <span class="coverage-text"></span>
+          </div>
+        </div>
       </section>
 
       <!-- Analysis Tools -->
@@ -85,6 +99,15 @@
 
     <!-- Analysis tool widget containers (populated by main.js) -->
     <div id="toolContainer" class="tool-widget-host"></div>
+
+    <!-- Click-to-inspect asset card (populated by main.js) -->
+    <div id="inspectorCard" class="inspector-card">
+      <header class="inspector-header">
+        <h3 id="inspectorTitle" class="inspector-title">Feature</h3>
+        <button id="inspectorClose" class="inspector-close" type="button" aria-label="Close">&#10005;</button>
+      </header>
+      <div id="inspectorBody" class="inspector-body"></div>
+    </div>
 
     <!-- App logic -->
     <script type="module" src="/main.js"></script>
