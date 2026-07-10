@@ -1,0 +1,558 @@
+/* ============================================================
+   Badouzi Port Digital Twin — Dark Mode / Glassmorphism theme
+   ============================================================ */
+
+:root {
+  --bg: #05070d;
+  --glass-bg: rgba(14, 18, 28, 0.55);
+  --glass-bg-strong: rgba(18, 24, 36, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-hover: rgba(255, 255, 255, 0.28);
+  --text: #eaf0f7;
+  --text-dim: #9aa7bd;
+  --accent: #34e1c4;
+  --accent-2: #4aa8ff;
+  --accent-glow: rgba(52, 225, 196, 0.55);
+  --danger: #ff5d73;
+  --radius: 18px;
+  --blur: 22px;
+  --font: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Full-screen 3D scene */
+#viewDiv {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* ------------------------------------------------------------
+   Hide default ArcGIS UI, keep + style the navigation zoom
+   ------------------------------------------------------------ */
+.esri-ui-corner .esri-component:not(.esri-zoom):not(.esri-navigation-toggle):not(.esri-compass) {
+  display: none !important;
+}
+
+.esri-attribution {
+  display: none !important;
+}
+
+.esri-widget--button {
+  background: var(--glass-bg-strong) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.esri-widget--button:hover {
+  background: rgba(52, 225, 196, 0.18) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.esri-zoom .esri-widget--button {
+  border-radius: 12px !important;
+}
+
+/* ============================================================
+   Cinematic intro overlay
+   ============================================================ */
+#loadingOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #0a1424 0%, #05070d 70%);
+  opacity: 1;
+  transition: opacity 1s ease;
+}
+
+#loadingOverlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loader-ring {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 1.6rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-top-color: var(--accent);
+  border-right-color: var(--accent-2);
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 28px var(--accent-glow);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.loader-sub {
+  margin-top: 0.6rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+}
+
+.dots::after {
+  content: "";
+  animation: dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+/* ============================================================
+   Floating glass control panel
+   ============================================================ */
+.glass-panel {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 100;
+  width: 340px;
+  max-height: calc(100% - 44px);
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: panelIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Thin custom scrollbar */
+.glass-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.glass-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
+/* Header */
+.panel-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.panel-subtitle {
+  margin-top: 4px;
+  padding-left: 20px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Sections */
+.panel-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.panel-section:last-of-type {
+  border-bottom: none;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.section-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--bg);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.section-hint {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* ------------------------------------------------------------
+   Layer toggles
+   ------------------------------------------------------------ */
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.toggle-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border-hover);
+}
+
+.toggle-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.toggle-row.missing .toggle-label {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* iOS-style switch */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background: #dfe6f0;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.switch input:checked + .slider {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+.switch input:disabled + .slider {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------
+   Storm surge segmented control
+   ------------------------------------------------------------ */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease,
+    transform 0.15s ease, box-shadow 0.3s ease;
+}
+
+.segment .seg-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.segment .seg-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.segment:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border-hover);
+  color: var(--text);
+}
+
+.segment:active {
+  transform: scale(0.96);
+}
+
+.segment.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 8px 22px rgba(52, 225, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.segment.active .seg-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Surge readout */
+.surge-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(74, 168, 255, 0.08);
+  border: 1px solid rgba(74, 168, 255, 0.2);
+}
+
+.readout-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+}
+
+.readout-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  transition: color 0.3s ease;
+}
+
+/* ------------------------------------------------------------
+   Analysis tool buttons
+   ------------------------------------------------------------ */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease,
+    transform 0.15s ease, box-shadow 0.3s ease;
+}
+
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border-hover);
+}
+
+.tool-btn:active {
+  transform: scale(0.96);
+}
+
+.tool-icon {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tool-btn.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 8px 22px rgba(52, 225, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.tool-btn.active .tool-icon {
+  color: #ffffff;
+}
+
+.tool-clear .tool-icon {
+  color: var(--danger);
+}
+
+.tool-clear:hover {
+  border-color: rgba(255, 93, 115, 0.5);
+}
+
+/* Host for Slice / Measurement widgets — themed to match the glass UI */
+.tool-widget-host {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  z-index: 90;
+  max-width: 340px;
+}
+
+.tool-widget-host:empty {
+  display: none;
+}
+
+.tool-widget-host .esri-widget {
+  background: var(--glass-bg-strong) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius) !important;
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------
+   Footer
+   ------------------------------------------------------------ */
+.panel-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  letter-spacing: 0.4px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------ */
+@media (max-width: 560px) {
+  .glass-panel {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 62%;
+  }
+}
