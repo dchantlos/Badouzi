@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Badouzi Port Digital Twin</title>
 
+    <!-- App font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- App styles (ArcGIS theme is imported inside main.js) -->
     <link rel="stylesheet" href="/style.css" />
   </head>
@@ -16,91 +24,110 @@
     <div id="loadingOverlay">
       <div class="loader-content">
         <div class="loader-ring"></div>
-        <h1 class="loader-title">Initializing Badouzi Digital Twin<span class="dots"></span></h1>
+        <h1 class="loader-title">Charting Badouzi Waters<span class="dots"></span></h1>
         <p class="loader-sub">Loading immersive 3D reality data&hellip;</p>
       </div>
     </div>
 
-    <!-- Floating glass control panel -->
-    <aside id="controlPanel" class="glass-panel">
-      <header class="panel-header">
-        <div class="panel-title-wrap">
-          <span class="panel-badge"></span>
-          <h2 class="panel-title">Port Digital Twin Operations</h2>
-        </div>
-        <p class="panel-subtitle">Badouzi Fishing Harbor &middot; Keelung</p>
-      </header>
+    <!-- Unified left dock: title + data layers + analysis, with the
+         Features-at-Risk drawer expanding beneath it when a surge is live -->
+    <div class="left-dock">
+      <aside class="dock-panel" aria-label="Port controls">
+        <header class="dock-header">
+          <span class="brand-mark"></span>
+          <span class="brand-text">
+            <span class="brand-title">Badouzi Port</span>
+            <span class="brand-sub">Taiwan &middot; Keelung</span>
+          </span>
+        </header>
 
-      <!-- Data Layers -->
-      <section class="panel-section">
-        <h3 class="section-title">Data Layers</h3>
-        <div id="layerToggles" class="toggle-list">
-          <!-- Toggles injected by main.js -->
-        </div>
-      </section>
-
-      <!-- Storm Surge Simulator -->
-      <section class="panel-section">
-        <h3 class="section-title">
-          Sea Level / Storm Surge
-          <span class="section-tag">Simulator</span>
-        </h3>
-        <p class="section-hint">Preview projected inundation scenarios.</p>
-        <div id="surgeControl" class="segmented">
-          <!-- Segments injected by main.js -->
-        </div>
-        <div class="surge-readout">
-          <span class="readout-label">Current Scenario</span>
-          <span id="surgeReadout" class="readout-value">Normal Conditions</span>
-        </div>
-        <!-- Inundation impact analysis (shown when a surge scenario is active) -->
-        <div id="surgeImpact" class="impact-readout">
-          <div class="impact-head">
-            <span class="impact-dot"></span>
-            <span id="impactCount" class="impact-count">0 assets at risk</span>
+        <section class="dock-section" aria-label="Data layers">
+          <h2 class="dock-section-title">Data Layers</h2>
+          <div id="layerToggles" class="dock-layers">
+            <!-- Layer switches injected by main.js -->
           </div>
-          <p id="impactDetail" class="impact-detail"></p>
-          <div id="impactArea" class="coverage">
-            <div class="coverage-track">
-              <div class="coverage-fill"></div>
-            </div>
-            <span class="coverage-text"></span>
+        </section>
+
+        <section class="dock-section" aria-label="Analysis tools">
+          <h2 class="dock-section-title">
+            Analysis
+            <span class="card-tag">3D</span>
+          </h2>
+          <div class="tool-grid">
+            <button id="toolSlice" class="tool-btn" type="button">
+              <span class="tool-icon">&#9698;</span>
+              <span class="tool-name">Slice</span>
+            </button>
+            <button id="toolVolume" class="tool-btn" type="button">
+              <span class="tool-icon">&#9633;</span>
+              <span class="tool-name">Volume</span>
+            </button>
+            <button id="toolLine" class="tool-btn" type="button">
+              <span class="tool-icon">&#8674;</span>
+              <span class="tool-name">Distance</span>
+            </button>
+            <button id="toolClear" class="tool-btn tool-clear" type="button">
+              <span class="tool-icon">&#10005;</span>
+              <span class="tool-name">Clear</span>
+            </button>
           </div>
+        </section>
+      </aside>
+
+      <!-- Features at risk — expands beneath the panel when a scenario is live -->
+      <section id="surgeImpact" class="risk-panel" aria-label="Features at risk">
+        <header class="card-head">
+          <h2 class="card-title">Features at Risk</h2>
+        </header>
+        <div class="impact-head">
+          <span class="impact-dot"></span>
+          <span id="impactCount" class="impact-count">0 features at risk</span>
+        </div>
+        <p id="impactDetail" class="impact-detail"></p>
+        <div class="value-at-risk">
+          <span class="value-label">Estimated Value At Risk</span>
+          <h2 id="valueAtRisk" class="value-amount">$0</h2>
+          <p class="value-disclaimer">Disclaimer: Impact estimates are derived from available GIS features and may not account for unmapped assets.</p>
+        </div>
+        <div id="impactArea" class="coverage">
+          <div class="coverage-track">
+            <div class="coverage-fill"></div>
+          </div>
+          <span class="coverage-text"></span>
+        </div>
+        <div class="depth-legend" aria-label="Water depth severity scale">
+          <span class="depth-key"><span class="depth-swatch" style="--c:#FFA500"></span>&lt; 1.5 m</span>
+          <span class="depth-key"><span class="depth-swatch" style="--c:#FF0000"></span>&ge; 1.5 m</span>
         </div>
       </section>
+    </div>
 
-      <!-- Analysis Tools -->
-      <section class="panel-section">
-        <h3 class="section-title">
-          Analysis Tools
-          <span class="section-tag">3D</span>
-        </h3>
-        <p class="section-hint">Slice through structures or measure the site.</p>
-        <div class="tool-grid">
-          <button id="toolSlice" class="tool-btn" type="button">
-            <span class="tool-icon">&#9698;</span>
-            <span class="tool-name">Slice</span>
-          </button>
-          <button id="toolVolume" class="tool-btn" type="button">
-            <span class="tool-icon">&#9633;</span>
-            <span class="tool-name">Volume / Area</span>
-          </button>
-          <button id="toolLine" class="tool-btn" type="button">
-            <span class="tool-icon">&#8674;</span>
-            <span class="tool-name">Distance</span>
-          </button>
-          <button id="toolClear" class="tool-btn tool-clear" type="button">
-            <span class="tool-icon">&#10005;</span>
-            <span class="tool-name">Clear</span>
-          </button>
-        </div>
-      </section>
-    </aside>
-
-    <!-- Analysis tool widget containers (populated by main.js) -->
+    <!-- ArcGIS Slice / Measurement widget host (top-right) -->
     <div id="toolContainer" class="tool-widget-host"></div>
 
-    <!-- Click-to-inspect asset card (populated by main.js) -->
+    <!-- Storm-surge tidal console — docked bottom-centre -->
+    <section class="surge-console" aria-label="Sea level and storm surge simulator">
+      <div class="console-intro">
+        <span class="console-eyebrow">Sea Level &middot; Storm Surge</span>
+        <span class="console-title">Tidal Scenario</span>
+      </div>
+      <div id="surgeControl" class="surge-scrubber">
+        <!-- Scenario stops injected by main.js -->
+      </div>
+      <div class="console-readout">
+        <span class="readout-label">Scenario</span>
+        <span id="surgeReadout" class="readout-value">Normal Conditions</span>
+      </div>
+      <div class="console-rain" hidden>
+        <span class="console-rain-label">Rain</span>
+        <label class="switch">
+          <input type="checkbox" id="rainToggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Click-to-inspect asset card (bottom-right) -->
     <div id="inspectorCard" class="inspector-card">
       <header class="inspector-header">
         <h3 id="inspectorTitle" class="inspector-title">Feature</h3>
@@ -108,6 +135,18 @@
       </header>
       <div id="inspectorBody" class="inspector-body"></div>
     </div>
+
+    <!-- Powered by Esri attribution badge (top-right) -->
+    <a
+      class="esri-badge"
+      href="https://www.esri.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Powered by Esri ArcGIS"
+    >
+      <img class="esri-badge__logo" src="/esri-logo.jpg" alt="Esri" width="26" height="26" />
+      <span class="esri-badge__text">Powered by <strong>Esri</strong></span>
+    </a>
 
     <!-- App logic -->
     <script type="module" src="/main.js"></script>

@@ -1,22 +1,28 @@
 /* ============================================================
-   Badouzi Port Digital Twin — Dark Mode / Glassmorphism theme
+   Badouzi Port Digital Twin — "Deep Current" theme
+   Oceanic navy + seafoam / marine-blue, fluid frosted-glass modules
    ============================================================ */
 
 :root {
-  --bg: #05070d;
-  --glass-bg: rgba(14, 18, 28, 0.55);
-  --glass-bg-strong: rgba(18, 24, 36, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-border-hover: rgba(255, 255, 255, 0.28);
-  --text: #eaf0f7;
-  --text-dim: #9aa7bd;
-  --accent: #34e1c4;
-  --accent-2: #4aa8ff;
-  --accent-glow: rgba(52, 225, 196, 0.55);
-  --danger: #ff5d73;
-  --radius: 18px;
-  --blur: 22px;
-  --font: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+  --bg: #081b26;                       /* deep water */
+  --glass-bg: rgba(26, 42, 58, 0.46);  /* frosted seawater (heavy transparency) */
+  --glass-bg-strong: rgba(22, 46, 62, 0.62);
+  --glass-border: rgba(190, 233, 255, 0.10);
+  --glass-border-hover: rgba(190, 233, 255, 0.28);
+  --text: #eaf6fb;
+  --text-dim: #9db6c6;
+  --accent: #63e6c8;                   /* seafoam */
+  --accent-2: #4aa8f0;                 /* crisp marine blue */
+  --accent-glow: rgba(99, 230, 200, 0.5);
+  --coral: #ff7a66;                    /* vibrant coral (warnings) */
+  --coral-glow: rgba(255, 122, 102, 0.55);
+  --danger: #ff7a66;                   /* alias -> coral */
+  --radius: 22px;                      /* soft, fluid corners */
+  --radius-sm: 16px;
+  --radius-pill: 999px;
+  --blur: 30px;                        /* heavy frosted-water blur */
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -65,7 +71,7 @@ body {
 }
 
 .esri-widget--button:hover {
-  background: rgba(52, 225, 196, 0.18) !important;
+  background: rgba(99, 230, 200, 0.18) !important;
   border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
@@ -84,7 +90,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 40%, #0a1424 0%, #05070d 70%);
+  background: radial-gradient(circle at 50% 36%, #12405a 0%, #081b26 70%);
   opacity: 1;
   transition: opacity 1s ease;
 }
@@ -143,152 +149,249 @@ body {
 }
 
 /* ============================================================
-   Floating glass control panel
+   Entrance animations for floating modules
    ============================================================ */
-.glass-panel {
+@keyframes floatIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes floatInLeft {
+  from { opacity: 0; transform: translateY(-50%) translateX(-24px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+@keyframes floatInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes floatInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   Unified left dock — title + layers + analysis, with the
+   Features-at-Risk drawer expanding beneath it
+   ============================================================ */
+.left-dock {
   position: absolute;
-  top: 22px;
-  left: 22px;
+  top: 20px;
+  left: 20px;
   z-index: 100;
-  /* Scale the whole panel down slightly so it fits without a scrollbar. */
-  zoom: 0.88;
-  width: 340px;
-  max-height: calc(100% - 44px);
-  overflow-y: auto;
-  padding: 22px;
+  width: 270px;
+  max-width: calc(100vw - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dock-panel {
+  padding: 18px 20px 20px;
   border-radius: var(--radius);
   background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  animation: panelIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+  backdrop-filter: blur(var(--blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+  box-shadow:
+    inset 0 2px 0 0 var(--accent),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 18px 48px rgba(0, 0, 0, 0.5);
+  animation: floatIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
 }
 
-@keyframes panelIn {
-  from {
-    opacity: 0;
-    transform: translateX(-30px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-/* Thin custom scrollbar */
-.glass-panel::-webkit-scrollbar {
-  width: 6px;
-}
-.glass-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-}
-
-/* Header */
-.panel-header {
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.panel-title-wrap {
+.dock-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.panel-badge {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent-glow);
-  flex-shrink: 0;
+.dock-section {
+  padding-top: 15px;
 }
 
-.panel-title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.panel-subtitle {
-  margin-top: 4px;
-  padding-left: 20px;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-/* Sections */
-.panel-section {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.panel-section:last-of-type {
-  border-bottom: none;
-}
-
-.section-title {
+.dock-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.72rem;
+  margin-bottom: 12px;
+  font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.6px;
   color: var(--text-dim);
-  margin-bottom: 14px;
 }
 
-.section-tag {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  color: var(--bg);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  padding: 2px 7px;
-  border-radius: 6px;
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 46%),
+    linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 16px var(--accent-glow), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
-.section-hint {
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  margin-bottom: 12px;
-}
-
-/* ------------------------------------------------------------
-   Layer toggles
-   ------------------------------------------------------------ */
-.toggle-list {
+.brand-text {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  line-height: 1.2;
 }
 
-.toggle-row {
+.brand-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--text);
+}
+
+.brand-sub {
+  font-size: 0.64rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   Card header (used by the Features-at-Risk drawer)
+   ============================================================ */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 15px;
+}
+
+.card-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: var(--text-dim);
+}
+
+.card-tag {
+  margin-left: auto;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #06232e;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.card-tag.risk-tag {
+  color: #33110b;
+  background: linear-gradient(135deg, #ffc0ab, var(--coral));
+}
+
+/* ============================================================
+   Storm-surge tidal console — docked bottom-centre
+   ============================================================ */
+.surge-console {
+  position: absolute;
+  z-index: 100;
+  bottom: 22px;
+  left: 360px;
+  right: 360px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 15px 24px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 22px 55px rgba(0, 0, 0, 0.55);
+  animation: floatInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+
+.console-intro {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  line-height: 1.25;
+}
+
+.console-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.console-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+.console-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  gap: 2px;
+  min-width: 118px;
+}
+
+.console-rain {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+/* Hidden for scenarios where rain doesn't apply (Normal / +1m). */
+.console-rain[hidden] {
+  display: none;
+}
+
+.console-rain-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   Data-layer switches — rows inside the left dock
+   ============================================================ */
+.dock-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dock-layers .toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 11px 14px;
+  padding: 9px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
-  transition: background 0.25s ease, border-color 0.25s ease;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.25s ease;
 }
 
-.toggle-row:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--glass-border-hover);
+.dock-layers .toggle-row:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .toggle-label {
-  font-size: 0.88rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   color: var(--text);
+}
+
+.toggle-row.missing {
+  opacity: 0.5;
 }
 
 .toggle-row.missing .toggle-label {
@@ -314,8 +417,8 @@ body {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 7px;
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -326,8 +429,8 @@ body {
   width: 18px;
   left: 3px;
   top: 3px;
-  background: #dfe6f0;
-  border-radius: 50%;
+  background: #eaf4f1;
+  border-radius: 5px;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -346,38 +449,46 @@ body {
   cursor: not-allowed;
 }
 
-/* ------------------------------------------------------------
-   Storm surge segmented control
-   ------------------------------------------------------------ */
-.segmented {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+/* ============================================================
+   Tidal scrubber — 4 scenario stops laid out horizontally
+   ============================================================ */
+.surge-scrubber {
+  position: relative;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--radius-pill);
+  background: rgba(6, 22, 32, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 .segment {
   position: relative;
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 12px 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: none;
   color: var(--text-dim);
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   overflow: hidden;
-  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease,
-    transform 0.15s ease, box-shadow 0.3s ease;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.15s ease,
+    box-shadow 0.3s ease;
 }
 
 .segment .seg-value {
-  font-size: 1.05rem;
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
   font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
 .segment .seg-label {
@@ -387,8 +498,7 @@ body {
 }
 
 .segment:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--glass-border-hover);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text);
 }
 
@@ -397,38 +507,28 @@ body {
 }
 
 .segment.active {
-  color: #ffffff;
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: 0 8px 22px rgba(52, 225, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #06232e;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 20px rgba(74, 168, 240, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .segment.active .seg-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(6, 35, 46, 0.72);
 }
 
-/* Surge readout */
-.surge-readout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(74, 168, 255, 0.08);
-  border: 1px solid rgba(74, 168, 255, 0.2);
-}
-
+/* Console readout (active scenario name) */
 .readout-label {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
   color: var(--text-dim);
 }
 
 .readout-value {
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
   font-weight: 700;
+  letter-spacing: -0.2px;
   color: var(--accent);
   transition: color 0.3s ease;
 }
@@ -447,12 +547,12 @@ body {
   align-items: center;
   gap: 8px;
   padding: 11px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--glass-border);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease,
@@ -475,14 +575,14 @@ body {
 }
 
 .tool-btn.active {
-  color: #ffffff;
+  color: #06232e;
   border-color: transparent;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: 0 8px 22px rgba(52, 225, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 20px rgba(74, 168, 240, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .tool-btn.active .tool-icon {
-  color: #ffffff;
+  color: #06232e;
 }
 
 .tool-clear .tool-icon {
@@ -490,16 +590,62 @@ body {
 }
 
 .tool-clear:hover {
-  border-color: rgba(255, 93, 115, 0.5);
+  border-color: rgba(255, 122, 102, 0.5);
 }
 
 /* Host for Slice / Measurement widgets — themed to match the glass UI */
+/* =============================================================================
+   Powered by Esri attribution badge (top-right)
+   ============================================================================= */
+.esri-badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px 8px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  text-decoration: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: color 0.25s ease, border-color 0.25s ease,
+    box-shadow 0.25s ease, transform 0.25s ease;
+}
+.esri-badge:hover {
+  color: var(--text);
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45),
+    0 0 18px -4px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.esri-badge__logo {
+  display: block;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.esri-badge__text strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
 .tool-widget-host {
   position: absolute;
-  top: 22px;
-  right: 22px;
+  top: 76px;
+  right: 20px;
   z-index: 90;
-  max-width: 340px;
+  width: 300px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100% - 96px);
+  overflow: auto;
 }
 
 .tool-widget-host:empty {
@@ -548,29 +694,48 @@ body {
 /* ------------------------------------------------------------
    Surge inundation impact readout
    ------------------------------------------------------------ */
-.impact-readout {
-  margin-top: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 93, 115, 0.06);
-  border: 1px solid rgba(255, 93, 115, 0.18);
-  opacity: 0;
-  max-height: 0;
+/* ------------------------------------------------------------
+   Features-at-Risk — drawer that expands beneath the left dock
+   when a surge scenario is selected
+   ------------------------------------------------------------ */
+.risk-panel {
   overflow: hidden;
-  transform: translateY(-6px);
-  transition: opacity 0.3s ease, max-height 0.35s ease, transform 0.3s ease,
-    border-color 0.3s ease, background 0.3s ease;
+  max-height: 0;
+  margin-top: 0;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+  box-shadow:
+    inset 0 2px 0 0 var(--coral),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 18px 48px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-top 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    padding 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.impact-readout.visible {
+.risk-panel.visible {
+  max-height: 520px;
+  margin-top: 10px;
+  padding: 16px 20px 18px;
   opacity: 1;
-  max-height: 260px;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
-.impact-readout.alert {
-  background: rgba(255, 93, 115, 0.12);
-  border-color: rgba(255, 93, 115, 0.4);
+.risk-panel.alert {
+  box-shadow:
+    inset 0 2px 0 0 var(--coral),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 18px 48px rgba(0, 0, 0, 0.5),
+    0 0 46px -18px var(--coral-glow);
 }
 
 .impact-head {
@@ -583,16 +748,17 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--danger);
-  box-shadow: 0 0 10px rgba(255, 93, 115, 0.7);
+  background: var(--coral);
+  box-shadow: 0 0 10px rgba(255, 122, 102, 0.7);
   flex: none;
 }
 
 .impact-count {
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: 0.2px;
+  letter-spacing: -0.1px;
 }
 
 .impact-detail {
@@ -600,6 +766,91 @@ body {
   font-size: 0.76rem;
   line-height: 1.45;
   color: var(--text-dim);
+}
+
+/* Financial Impact Calculator — estimated value at risk */
+.value-at-risk {
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.value-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.value-amount {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+  color: var(--danger);
+  text-shadow: 0 0 22px var(--coral-glow);
+}
+
+.value-disclaimer {
+  margin-top: 6px;
+  font-size: 0.64rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+
+.risk-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
+  color: var(--text-dim);
+}
+
+.risk-legend::before {
+  content: "";
+  flex: none;
+  width: 20px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, rgba(255, 122, 102, 0), var(--coral));
+  box-shadow: 0 0 10px var(--coral-glow);
+}
+
+/* ------------------------------------------------------------
+   Water-depth severity legend + critical-inundation alerts
+   ------------------------------------------------------------ */
+.depth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 13px;
+  font-size: 0.68rem;
+  letter-spacing: 0.2px;
+  color: var(--text-dim);
+}
+
+.depth-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.depth-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 8px -1px var(--c);
 }
 
 /* Site inundation coverage bar */
@@ -628,19 +879,20 @@ body {
 .coverage-fill {
   height: 100%;
   width: 0%;
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--accent-2), var(--danger));
-  box-shadow: 0 0 12px rgba(255, 93, 115, 0.5);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent-2), var(--coral));
+  box-shadow: 0 0 12px rgba(255, 122, 102, 0.5);
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .coverage-text {
   display: block;
   margin-top: 6px;
-  font-size: 0.74rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text);
-  letter-spacing: 0.2px;
+  letter-spacing: -0.1px;
 }
 
 /* ------------------------------------------------------------
@@ -656,10 +908,12 @@ body {
   padding: 16px 18px;
   border-radius: var(--radius);
   background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(var(--blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+  box-shadow:
+    inset 0 2px 0 0 var(--accent),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 18px 50px rgba(0, 0, 0, 0.55);
   opacity: 0;
   transform: translateY(14px) scale(0.98);
   pointer-events: none;
@@ -677,9 +931,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 8px;
 }
 
 .inspector-title {
@@ -717,7 +969,7 @@ body {
 }
 
 .inspector-row + .inspector-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 2px;
 }
 
 .inspector-label {
@@ -727,7 +979,8 @@ body {
 }
 
 .inspector-value {
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text);
   text-align: right;
@@ -740,6 +993,7 @@ body {
 }
 
 .inspector-row--note .inspector-value {
+  font-family: var(--font);
   font-weight: 500;
   text-align: left;
   color: var(--text-dim);
@@ -749,21 +1003,57 @@ body {
 /* ------------------------------------------------------------
    Responsive
    ------------------------------------------------------------ */
-@media (max-width: 560px) {
-  .glass-panel {
-    top: auto;
-    bottom: 12px;
-    right: 12px;
+@media (max-width: 1180px) {
+  .surge-console {
+    left: 20px;
+    right: 340px;
+  }
+}
+
+@media (max-width: 760px) {
+  .surge-console {
+    left: 20px;
+    right: 20px;
+  }
+}
+
+@media (max-width: 620px) {
+  .left-dock {
+    top: 12px;
     left: 12px;
-    width: auto;
-    max-height: 62%;
+    width: calc(100vw - 24px);
+  }
+
+  .tool-widget-host {
+    top: 12px;
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-height: 40%;
+  }
+
+  .surge-console {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: var(--radius);
+  }
+
+  .console-intro {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .console-readout {
+    align-items: center;
+    width: 100%;
   }
 
   .inspector-card {
-    bottom: auto;
-    top: 12px;
-    right: 12px;
     left: 12px;
+    right: 12px;
+    bottom: 12px;
     width: auto;
   }
 }

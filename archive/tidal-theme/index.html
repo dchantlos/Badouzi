@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Badouzi Port Digital Twin</title>
+
+    <!-- App styles (ArcGIS theme is imported inside main.js) -->
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <!-- 3D Scene container -->
+    <div id="viewDiv"></div>
+
+    <!-- Cinematic intro overlay -->
+    <div id="loadingOverlay">
+      <div class="loader-content">
+        <div class="loader-ring"></div>
+        <h1 class="loader-title">Initializing Badouzi Digital Twin<span class="dots"></span></h1>
+        <p class="loader-sub">Loading immersive 3D reality data&hellip;</p>
+      </div>
+    </div>
+
+    <!-- Floating glass control panel -->
+    <aside id="controlPanel" class="glass-panel">
+      <header class="panel-header">
+        <div class="panel-title-wrap">
+          <span class="panel-badge"></span>
+          <h2 class="panel-title">Port Digital Twin Operations</h2>
+        </div>
+        <p class="panel-subtitle">Badouzi Fishing Harbor &middot; Keelung</p>
+      </header>
+
+      <!-- Data Layers -->
+      <section class="panel-section">
+        <h3 class="section-title">Data Layers</h3>
+        <div id="layerToggles" class="toggle-list">
+          <!-- Toggles injected by main.js -->
+        </div>
+      </section>
+
+      <!-- Storm Surge Simulator -->
+      <section class="panel-section">
+        <h3 class="section-title">
+          Sea Level / Storm Surge
+          <span class="section-tag">Simulator</span>
+        </h3>
+        <p class="section-hint">Preview projected inundation scenarios.</p>
+        <div id="surgeControl" class="segmented">
+          <!-- Segments injected by main.js -->
+        </div>
+        <div class="surge-readout">
+          <span class="readout-label">Current Scenario</span>
+          <span id="surgeReadout" class="readout-value">Normal Conditions</span>
+        </div>
+        <!-- Inundation impact analysis (shown when a surge scenario is active) -->
+        <div id="surgeImpact" class="impact-readout">
+          <div class="impact-head">
+            <span class="impact-dot"></span>
+            <span id="impactCount" class="impact-count">0 assets at risk</span>
+          </div>
+          <p id="impactDetail" class="impact-detail"></p>
+          <div id="impactArea" class="coverage">
+            <div class="coverage-track">
+              <div class="coverage-fill"></div>
+            </div>
+            <span class="coverage-text"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Analysis Tools -->
+      <section class="panel-section">
+        <h3 class="section-title">
+          Analysis Tools
+          <span class="section-tag">3D</span>
+        </h3>
+        <p class="section-hint">Slice through structures or measure the site.</p>
+        <div class="tool-grid">
+          <button id="toolSlice" class="tool-btn" type="button">
+            <span class="tool-icon">&#9698;</span>
+            <span class="tool-name">Slice</span>
+          </button>
+          <button id="toolVolume" class="tool-btn" type="button">
+            <span class="tool-icon">&#9633;</span>
+            <span class="tool-name">Volume / Area</span>
+          </button>
+          <button id="toolLine" class="tool-btn" type="button">
+            <span class="tool-icon">&#8674;</span>
+            <span class="tool-name">Distance</span>
+          </button>
+          <button id="toolClear" class="tool-btn tool-clear" type="button">
+            <span class="tool-icon">&#10005;</span>
+            <span class="tool-name">Clear</span>
+          </button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Analysis tool widget containers (populated by main.js) -->
+    <div id="toolContainer" class="tool-widget-host"></div>
+
+    <!-- Click-to-inspect asset card (populated by main.js) -->
+    <div id="inspectorCard" class="inspector-card">
+      <header class="inspector-header">
+        <h3 id="inspectorTitle" class="inspector-title">Feature</h3>
+        <button id="inspectorClose" class="inspector-close" type="button" aria-label="Close">&#10005;</button>
+      </header>
+      <div id="inspectorBody" class="inspector-body"></div>
+    </div>
+
+    <!-- App logic -->
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

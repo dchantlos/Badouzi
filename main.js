@@ -9,6 +9,7 @@ import WebScene from "@arcgis/core/WebScene.js";
 import SceneView from "@arcgis/core/views/SceneView.js";
 import Slice from "@arcgis/core/widgets/Slice.js";
 import Measurement from "@arcgis/core/widgets/Measurement.js";
+import VolumeMeasurementAnalysis from "@arcgis/core/analysis/VolumeMeasurementAnalysis.js";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js";
 import Graphic from "@arcgis/core/Graphic.js";
 import Multipoint from "@arcgis/core/geometry/Multipoint.js";
@@ -48,6 +49,15 @@ const SURGE_FLOOD_HEIGHTS = {
 // Waterfront point-asset layers analysed for inundation. Each asset's ground
 // elevation is compared against the active flood surface height.
 const VULNERABLE_ASSET_LAYERS = ["Mooring Bollards", "Street Lights"];
+
+// Estimated replacement / damage cost (USD) per affected feature, used by the
+// Financial Impact Calculator in the Features-at-Risk panel. Buildings use the
+// `building` key (BIM BuildingSceneLayers have no per-footprint valuation).
+const FEATURE_COSTS = {
+  "Mooring Bollards": 1500,
+  "Street Lights": 3200,
+  building: 150000
+};
 
 // The reality mesh defines the analysis footprint. It stays hidden (we only
 // show the Gaussian Splat) but its extent + the ground elevation service let
@@ -140,38 +150,153 @@ function initApp() {
   });
   scene.add(impactLayer);
 
-  // Red marker (with leader line) for an inundated point asset. The billboard
-  // icon + callout keeps it visible above the reality-capture surface.
-  const IMPACT_SYMBOL = {
+  // Temporary marker layer for the click-to-check "Location Flood Check".
+  // relative-to-ground so the reticle's flat base pad hugs the terrain/water
+  // surface automatically (elevationInfo is a layer-level property in the JS API).
+  const probeLayer = new GraphicsLayer({
+    title: "__flood_probe__",
+    listMode: "hide",
+    elevationInfo: { mode: "relative-to-ground" }
+  });
+  scene.add(probeLayer);
+
+  // High-tech 3D volumetric "holographic laser" reticle for the Location Flood
+  // Check. Three stacked ObjectSymbol3DLayer cylinders — all true 3D volumes
+  // (never billboard): a flat base pad that lies parallel to the surface, a
+  // wide semi-transparent outer beam, and a narrow bright inner core.
+  const RETICLE_SYMBOL = {
     type: "point-3d",
     symbolLayers: [
+      // 1) Base pad — a very wide, flat disc. Being a flat cylinder it lies
+      //    parallel to the 3D surface instead of facing the camera.
+      {
+        type: "object",
+        resource: { primitive: "cylinder" },
+        material: { color: [50, 205, 50, 0.7] },
+        width: 7,
+        depth: 7,
+        height: 0.1,
+        anchor: "bottom"
+      },
+      // 2) Holographic beam (outer) — short, wide, semi-transparent lime volume.
+      {
+        type: "object",
+        resource: { primitive: "cylinder" },
+        material: { color: [50, 205, 50, 0.4] },
+        width: 1.6,
+        depth: 1.6,
+        height: 24,
+        anchor: "bottom"
+      },
+      // 3) Laser core (inner) — a narrow bright core inside the beam.
+      {
+        type: "object",
+        resource: { primitive: "cylinder" },
+        material: { color: [200, 255, 180] },
+        width: 0.35,
+        depth: 0.35,
+        height: 24,
+        anchor: "bottom"
+      }
+    ]
+  };
+
+  // -------- Depth / severity symbology -----------------------------------
+  // Depth colouring is SCENARIO-RELATIVE: `threshold` is derived per surge run
+  // from that scenario's own min/max flood depth (see runSurgeImpact), so every
+  // scenario shows a shallow(orange)/deep(red) mix instead of going all-red at
+  // the higher surges. Falls back to a 1 m absolute split if unset.
+  function depthSeverity(depth, threshold) {
+    const t = typeof threshold === "number" && threshold > 0 ? threshold : 1;
+    if (depth >= t) return { color: [255, 0, 0], level: "severe" }; // #FF0000
+    return { color: [255, 165, 0], level: "minor" }; // #FFA500
+  }
+
+  // -------- Holographic HUD risk markers --------------------------------
+  // Minimal white line-art glyphs (viewBox 24), tinted at runtime via
+  // material.color and drawn as a small second icon layer centred over the
+  // glassy ring so each marker reads its feature type. Encoded as data URIs.
+  function svgGlyph(inner) {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" ' +
+      'stroke-linejoin="round">' + inner + "</svg>";
+    return "data:image/svg+xml;base64," + btoa(svg);
+  }
+
+  const RISK_GLYPHS = {
+    // anchor — mooring bollards
+    "Mooring Bollards": svgGlyph(
+      '<circle cx="12" cy="4" r="2"/><path d="M12 6v14"/>' +
+        '<path d="M5 12a7 7 0 0 0 14 0"/><path d="M3 12h4M17 12h4"/>'
+    ),
+    // lamp — street lights
+    "Street Lights": svgGlyph(
+      '<path d="M12 2a3 3 0 0 1 3 3c0 2.2-3 4-3 4s-3-1.8-3-4a3 3 0 0 1 3-3z"/>' +
+        '<path d="M12 9v11"/><path d="M9 20h6"/>'
+    ),
+    // building — BIM facilities
+    building: svgGlyph(
+      '<rect x="5" y="3" width="14" height="18" rx="1"/>' +
+        '<path d="M10 21v-5h4v5"/><path d="M9 8h6M9 12h6"/>'
+    )
+  };
+
+  // Glassy "holographic HUD" marker: a translucent severity-tinted disc with a
+  // bright glowing outline ring + a small type glyph, hung on a near-invisible
+  // hairline callout so it never blocks the reality mesh. ~25% smaller heads.
+  function makeImpactSymbol(depth, layerTitle, threshold) {
+    const c = depthSeverity(depth, threshold).color;
+    const layers = [
       {
         type: "icon",
         resource: { primitive: "circle" },
-        material: { color: [255, 64, 84] },
-        size: 11,
-        outline: { color: [255, 255, 255, 0.9], size: 1.5 }
+        material: { color: [c[0], c[1], c[2], 0.15] }, // ghosted glass fill
+        size: 8,
+        outline: { color: c, size: 1.5 } // bright severity ring
       }
-    ],
-    verticalOffset: { screenLength: 26, maxWorldLength: 60, minWorldLength: 12 },
-    callout: { type: "line", size: 1.5, color: [255, 64, 84] }
-  };
-
-  // Larger marker for an at-risk BIM building.
-  const BUILDING_IMPACT_SYMBOL = {
-    type: "point-3d",
-    symbolLayers: [
-      {
+    ];
+    const glyph = RISK_GLYPHS[layerTitle];
+    if (glyph) {
+      layers.push({
         type: "icon",
-        resource: { primitive: "square" },
-        material: { color: [255, 93, 115] },
-        size: 16,
-        outline: { color: [255, 255, 255, 0.95], size: 2 }
-      }
-    ],
-    verticalOffset: { screenLength: 44, maxWorldLength: 130, minWorldLength: 30 },
-    callout: { type: "line", size: 2, color: [255, 93, 115] }
-  };
+        resource: { href: glyph },
+        material: { color: [255, 255, 255, 0.85] },
+        size: 5
+      });
+    }
+    return {
+      type: "point-3d",
+      symbolLayers: layers,
+      verticalOffset: { screenLength: 26, maxWorldLength: 60, minWorldLength: 12 },
+      callout: { type: "line", size: 0.75, color: [255, 255, 255, 0.4] }
+    };
+  }
+
+  // Larger square HUD marker for an at-risk BIM building.
+  function makeBuildingImpactSymbol(depth, threshold) {
+    const c = depthSeverity(depth, threshold).color;
+    return {
+      type: "point-3d",
+      symbolLayers: [
+        {
+          type: "icon",
+          resource: { primitive: "square" },
+          material: { color: [c[0], c[1], c[2], 0.15] },
+          size: 12,
+          outline: { color: c, size: 1.5 }
+        },
+        {
+          type: "icon",
+          resource: { href: RISK_GLYPHS.building },
+          material: { color: [255, 255, 255, 0.85] },
+          size: 8
+        }
+      ],
+      verticalOffset: { screenLength: 44, maxWorldLength: 130, minWorldLength: 30 },
+      callout: { type: "line", size: 0.75, color: [255, 255, 255, 0.4] }
+    };
+  }
 
   /**
    * Find a layer anywhere in the scene (top-level or nested in group layers)
@@ -222,6 +347,62 @@ function initApp() {
     });
   }
 
+  /**
+   * Dynamic Weather Simulation: match the scene's weather + lighting to the
+   * severity of the selected tidal / storm-surge scenario. Called from the
+   * scenario activate() below, so it updates immediately on every switch.
+   *
+   * Rain precipitation is opt-in via the console "Rain" toggle (rainEnabled) —
+   * the particle sim is GPU-heavy, so by default the storm reads through heavy
+   * cloud cover + darker lighting alone (no lag).
+   */
+  function applyScenarioWeather(value) {
+    const env = view.environment;
+
+    // The Rain toggle only makes sense for the wetter scenarios — show it for
+    // +2m / +3m, hide it for Normal (0m) and +1m where rain never applies.
+    const rainApplicable = value === "+2m" || value === "+3m";
+    const rainInput = document.getElementById("rainToggle");
+    const rainWrap = rainInput && rainInput.closest(".console-rain");
+    if (rainWrap) rainWrap.hidden = !rainApplicable;
+
+    if (!env) return;
+
+    switch (value) {
+      case "+1m": // moody, overcast late afternoon
+        env.weather = { type: "cloudy", cloudCover: 0.8 };
+        if (env.lighting) env.lighting.date = new Date("March 15, 2024 16:00:00");
+        break;
+      case "+2m": // heavy cloud, darker afternoon; rain only if toggled on
+        env.weather = rainEnabled
+          ? { type: "rainy", cloudCover: 0.9, precipitation: 0.5 }
+          : { type: "cloudy", cloudCover: 0.9 };
+        if (env.lighting) env.lighting.date = new Date("March 15, 2024 16:00:00");
+        break;
+      case "+3m": // cloud + sunlight matched to +2m; heavier rain when toggled on
+        env.weather = rainEnabled
+          ? { type: "rainy", cloudCover: 0.9, precipitation: 1.0 }
+          : { type: "cloudy", cloudCover: 0.9 };
+        if (env.lighting) env.lighting.date = new Date("March 15, 2024 16:00:00");
+        break;
+      default: // "0m" — bright, calm, sunny mid-day
+        env.weather = { type: "sunny", cloudCover: 0.2 };
+        if (env.lighting) env.lighting.date = new Date("March 15, 2024 12:00:00");
+        break;
+    }
+  }
+
+  /** Wire the console "Rain" toggle: opt into precipitation, re-apply weather. */
+  function setupRainToggle() {
+    const toggle = document.getElementById("rainToggle");
+    if (!toggle) return;
+    toggle.checked = rainEnabled;
+    toggle.addEventListener("change", function () {
+      rainEnabled = toggle.checked;
+      applyScenarioWeather(activeScenarioValue);
+    });
+  }
+
   /** Build the mutually-exclusive storm-surge segmented control. */
   function buildSurgeControl() {
     const container = document.getElementById("surgeControl");
@@ -250,6 +431,10 @@ function initApp() {
       // Track the active scenario so the click inspector can report flood
       // status at any point the user clicks.
       activeScenarioTitle = activeCfg.title;
+      activeScenarioValue = activeCfg.value;
+
+      // Dynamic Weather Simulation — sync environment to scenario severity.
+      applyScenarioWeather(activeCfg.value);
 
       // Run (or clear) the inundation impact analysis for this scenario.
       runSurgeImpact(activeCfg.title);
@@ -300,6 +485,11 @@ function initApp() {
   // The scenario currently selected in the surge control. The click inspector
   // uses it to report flood status at the clicked location.
   let activeScenarioTitle = "Normal Conditions";
+  // The active scenario's short value ("0m" / "+1m" / …) plus whether the user
+  // has opted into rain. Rain is off by default — the precipitation particle
+  // sim is GPU-heavy; cloud cover alone conveys the storm without the lag.
+  let activeScenarioValue = "0m";
+  let rainEnabled = false;
 
   /**
    * Storm-surge impact analysis: compares each waterfront asset's ground
@@ -314,6 +504,7 @@ function initApp() {
     const summaryEl = document.getElementById("surgeImpact");
     const countEl = document.getElementById("impactCount");
     const detailEl = document.getElementById("impactDetail");
+    const valueEl = document.getElementById("valueAtRisk");
 
     const floodHeight = SURGE_FLOOD_HEIGHTS[scenarioTitle];
 
@@ -322,17 +513,24 @@ function initApp() {
       if (summaryEl) summaryEl.classList.remove("visible", "alert");
       const areaEl = document.getElementById("impactArea");
       if (areaEl) areaEl.classList.remove("visible");
+      if (valueEl) valueEl.textContent = "$0";
       return;
     }
 
     if (summaryEl) summaryEl.classList.add("visible");
     if (countEl) countEl.textContent = "Analysing\u2026";
     if (detailEl) detailEl.textContent = "";
+    if (valueEl) valueEl.textContent = "\u2026";
 
     let totalInundated = 0;
     let conditionSum = 0;
     let conditionCount = 0;
+    let valueAtRisk = 0;
     const perLayer = [];
+    // Collect inundated features first, then colour them by a scenario-relative
+    // depth threshold computed from this run's own min/max depth (below).
+    const impactPoints = []; // { x, y, z, sr, depth, layerTitle }
+    const impactBuildings = []; // { x, y, z, sr, depth }
 
     for (const layerTitle of VULNERABLE_ASSET_LAYERS) {
       const layer = findLayerByTitle(layerTitle);
@@ -381,22 +579,20 @@ function initApp() {
               conditionCount++;
             }
 
-            impactLayer.add(
-              new Graphic({
-                geometry: {
-                  type: "point",
-                  x: pts[i][0],
-                  y: pts[i][1],
-                  z: groundZ,
-                  spatialReference: multipoint.spatialReference
-                },
-                symbol: IMPACT_SYMBOL
-              })
-            );
+            const depth = floodHeight - groundZ; // water depth at this asset
+            impactPoints.push({
+              x: pts[i][0],
+              y: pts[i][1],
+              z: groundZ,
+              sr: multipoint.spatialReference,
+              depth: depth,
+              layerTitle: layerTitle
+            });
           }
         });
 
         if (layerCount > 0) perLayer.push(layerCount + " \u00d7 " + layerTitle);
+        valueAtRisk += layerCount * (FEATURE_COSTS[layerTitle] || 0);
       } catch (err) {
         console.warn("Surge analysis failed for", layerTitle, err);
       }
@@ -424,18 +620,14 @@ function initApp() {
         const groundZ = sampled.geometry.z;
         if (typeof groundZ === "number" && groundZ <= floodHeight) {
           buildingsAtRisk.push(bLayer.title);
-          impactLayer.add(
-            new Graphic({
-              geometry: {
-                type: "point",
-                x: ext.center.x,
-                y: ext.center.y,
-                z: groundZ,
-                spatialReference: ext.center.spatialReference
-              },
-              symbol: BUILDING_IMPACT_SYMBOL
-            })
-          );
+          const depth = floodHeight - groundZ;
+          impactBuildings.push({
+            x: ext.center.x,
+            y: ext.center.y,
+            z: groundZ,
+            sr: ext.center.spatialReference,
+            depth: depth
+          });
         }
       } catch (err) {
         console.warn("Surge analysis failed for building", bLayer.title, err);
@@ -444,7 +636,28 @@ function initApp() {
 
     if (runId !== surgeRunId) return;
 
+    // Fixed depth split: features flooded by < 1.5 m read orange, ≥ 1.5 m red.
+    const severityThreshold = 1.5;
+
+    impactPoints.forEach(function (p) {
+      impactLayer.add(
+        new Graphic({
+          geometry: { type: "point", x: p.x, y: p.y, z: p.z, spatialReference: p.sr },
+          symbol: makeImpactSymbol(p.depth, p.layerTitle, severityThreshold)
+        })
+      );
+    });
+    impactBuildings.forEach(function (b) {
+      impactLayer.add(
+        new Graphic({
+          geometry: { type: "point", x: b.x, y: b.y, z: b.z, spatialReference: b.sr },
+          symbol: makeBuildingImpactSymbol(b.depth, severityThreshold)
+        })
+      );
+    });
+
     const totalAtRisk = totalInundated + buildingsAtRisk.length;
+    valueAtRisk += buildingsAtRisk.length * (FEATURE_COSTS.building || 0);
 
     // --- Site-wide inundation coverage (uses the reality mesh footprint) --
     const coverage = await computeCoverage(floodHeight, runId);
@@ -470,6 +683,9 @@ function initApp() {
       }
       detailEl.textContent = detail;
     }
+
+    // Financial Impact Calculator — total estimated value at risk.
+    if (valueEl) valueEl.textContent = "$" + valueAtRisk.toLocaleString();
 
     // Render the coverage bar + stats.
     const areaEl = document.getElementById("impactArea");
@@ -571,6 +787,7 @@ function initApp() {
     if (closeBtn) {
       closeBtn.addEventListener("click", function () {
         card.classList.remove("visible");
+        probeLayer.removeAll();
       });
     }
 
@@ -622,6 +839,22 @@ function initApp() {
           groundZ = typeof mapPoint.z === "number" ? mapPoint.z : null;
         }
 
+        // Drop the holographic reticle at the probed location. probeLayer is
+        // relative-to-ground, so z = 0 sits the base pad right on the surface.
+        probeLayer.removeAll();
+        probeLayer.add(
+          new Graphic({
+            geometry: {
+              type: "point",
+              x: mapPoint.x,
+              y: mapPoint.y,
+              z: 0,
+              spatialReference: mapPoint.spatialReference
+            },
+            symbol: RETICLE_SYMBOL
+          })
+        );
+
         const floodHeight = SURGE_FLOOD_HEIGHTS[activeScenarioTitle];
         const rows = [];
         rows.push({
@@ -665,13 +898,15 @@ function initApp() {
       // Keep only graphic hits from real, inspectable asset layers.
       const results = response.results.filter(function (r) {
         const layer = r.graphic && r.graphic.layer;
-        if (!layer || layer === impactLayer) return false;
+        if (!layer || layer === impactLayer || layer === probeLayer) return false;
         if (NON_QUERYABLE.indexOf(layer.type) !== -1) return false;
         if (SURGE_TITLES.indexOf(layer.title) !== -1) return false;
         return true;
       });
 
       if (results.length) {
+        // A real asset was clicked — clear any lingering flood-probe marker.
+        probeLayer.removeAll();
         const graphic = results[0].graphic;
         const layer = graphic.layer;
         const layerTitle = (layer && layer.title) || "Feature";
@@ -727,6 +962,7 @@ function initApp() {
         analyzePoint(event.mapPoint);
       } else {
         card.classList.remove("visible");
+        probeLayer.removeAll();
       }
     });
   }
@@ -765,8 +1001,9 @@ function initApp() {
   });
 
   /**
-   * Wire up the Slice and Measurement (area/volume + distance) analysis tools.
-   * Only one tool is active at a time; each renders into the top-right host.
+   * Wire up the Slice, Volume and Distance analysis tools.
+   * Only one tool is active at a time. Slice + Distance render widgets into the
+   * top-right host; Volume is a VolumeMeasurementAnalysis drawn on the scene.
    */
   function setupAnalysisTools() {
     const host = document.getElementById("toolContainer");
@@ -783,7 +1020,12 @@ function initApp() {
     const slice = new Slice({ view: view, container: sliceNode });
     const measurement = new Measurement({ view: view, container: measureNode });
 
-    let active = null; // "slice" | "measure" | null
+    // Volume is an analysis (not a widget): it is added to view.analyses and
+    // its polygon is drawn interactively on the scene surface.
+    let volumeAnalysis = null;
+    let volumePlacement = null; // AbortController for the in-progress placement
+
+    let active = null; // "slice" | "measure" | "volume" | null
 
     function clearAll() {
       // Reset the slice plane and any active measurement.
@@ -791,6 +1033,15 @@ function initApp() {
       measurement.clear();
       if (sliceNode.parentNode) host.removeChild(sliceNode);
       if (measureNode.parentNode) host.removeChild(measureNode);
+      // Cancel any in-progress volume placement and drop the analysis.
+      if (volumePlacement) {
+        volumePlacement.abort();
+        volumePlacement = null;
+      }
+      if (volumeAnalysis) {
+        view.analyses.remove(volumeAnalysis);
+        volumeAnalysis = null;
+      }
       active = null;
       [sliceBtn, volumeBtn, lineBtn].forEach(function (b) {
         b.classList.remove("active");
@@ -807,18 +1058,41 @@ function initApp() {
     function showMeasurement(tool, btn) {
       clearAll();
       host.appendChild(measureNode);
-      measurement.activeTool = tool; // "area" (3D area/volume) or "direct-line"
+      measurement.activeTool = tool; // "direct-line" distance measurement
       active = "measure";
       btn.classList.add("active");
+    }
+
+    async function showVolume() {
+      clearAll();
+      active = "volume";
+      volumeBtn.classList.add("active");
+
+      // Cut-fill volume relative to a flat surface under the drawn polygon.
+      const analysis = new VolumeMeasurementAnalysis({ measureType: "cut-fill" });
+      volumeAnalysis = analysis;
+      view.analyses.add(analysis);
+
+      // Let the user draw the measurement polygon on the scene.
+      const abortController = new AbortController();
+      volumePlacement = abortController;
+      try {
+        const analysisView = await view.whenAnalysisView(analysis);
+        await analysisView.place({ signal: abortController.signal });
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Volume measurement placement failed:", error);
+        }
+      } finally {
+        if (volumePlacement === abortController) volumePlacement = null;
+      }
     }
 
     sliceBtn.addEventListener("click", function () {
       active === "slice" ? clearAll() : showSlice();
     });
     volumeBtn.addEventListener("click", function () {
-      active === "measure" && measurement.activeTool === "area"
-        ? clearAll()
-        : showMeasurement("area", volumeBtn);
+      active === "volume" ? clearAll() : showVolume();
     });
     lineBtn.addEventListener("click", function () {
       active === "measure" && measurement.activeTool === "direct-line"
@@ -835,6 +1109,7 @@ function initApp() {
       clearTimeout(watchdog);
       buildLayerToggles();
       buildSurgeControl();
+      setupRainToggle();
       setupAnalysisTools();
       setupAssetInspector();
       dismissOverlay();
