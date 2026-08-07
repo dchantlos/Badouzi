@@ -13,6 +13,8 @@ import VolumeMeasurementAnalysis from "@arcgis/core/analysis/VolumeMeasurementAn
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js";
 import Graphic from "@arcgis/core/Graphic.js";
 import Multipoint from "@arcgis/core/geometry/Multipoint.js";
+import Glow from "@arcgis/core/webscene/Glow.js";
+import { createWeatherPanel } from "./weather.js";
 
 // -------- Configuration --------------------------------------------------
 
@@ -129,6 +131,10 @@ window.addEventListener("unhandledrejection", function (e) {
 });
 
 function initApp() {
+  // Live weather is independent of the 3D scene — start it now so the panel is
+  // populated by the time the intro overlay lifts.
+  createWeatherPanel();
+
   // Build the Web Scene from the portal item.
   const scene = new WebScene({
     portalItem: { id: WEB_SCENE_ID }
@@ -242,27 +248,46 @@ function initApp() {
     )
   };
 
-  // Glassy "holographic HUD" marker: a translucent severity-tinted disc with a
-  // bright glowing outline ring + a small type glyph, hung on a near-invisible
-  // hairline callout so it never blocks the reality mesh. ~25% smaller heads.
+  // -------- Glowing orb risk markers ------------------------------------
+  // Each at-risk feature is flagged with a translucent, severity-tinted 3D
+  // "orb" (a sphere object symbol) that SELF-EMITS light via an emissive
+  // material and blooms through the scene-level webscene Glow enabled in
+  // view.when() — so markers read as glowing beacons floating on a thin
+  // callout "pin" above the reality mesh. The type glyph stays legible inside
+  // the glassy orb. Orb size is world-space (metres); tune ORB_* to taste.
+  const ORB_EMISSIVE = 2.4; // self-emission strength (bloomed by scene Glow)
+  const ORB_ALPHA = 0.55; // glassy translucency so the glyph reads through
+  const ORB_SIZE = 2; // point-asset orb diameter, metres
+  const BUILDING_ORB_SIZE = 3; // larger orb for at-risk BIM buildings
+
+  // Emissive "glowing glass" sphere tinted by severity.
+  function orbLayer(color, size) {
+    return {
+      type: "object",
+      resource: { primitive: "sphere" },
+      material: {
+        color: [color[0], color[1], color[2], ORB_ALPHA],
+        emissive: { strength: ORB_EMISSIVE, source: "color" }
+      },
+      width: size,
+      depth: size,
+      height: size,
+      anchor: "center"
+    };
+  }
+
+  // Glowing-orb marker hung on a near-invisible hairline callout "pin" so it
+  // never blocks the reality mesh. The small type glyph reads through the glass.
   function makeImpactSymbol(depth, layerTitle, threshold) {
     const c = depthSeverity(depth, threshold).color;
-    const layers = [
-      {
-        type: "icon",
-        resource: { primitive: "circle" },
-        material: { color: [c[0], c[1], c[2], 0.15] }, // ghosted glass fill
-        size: 8,
-        outline: { color: c, size: 1.5 } // bright severity ring
-      }
-    ];
+    const layers = [orbLayer(c, ORB_SIZE)];
     const glyph = RISK_GLYPHS[layerTitle];
     if (glyph) {
       layers.push({
         type: "icon",
         resource: { href: glyph },
-        material: { color: [255, 255, 255, 0.85] },
-        size: 5
+        material: { color: [255, 255, 255, 0.9] },
+        size: 6
       });
     }
     return {
@@ -273,29 +298,31 @@ function initApp() {
     };
   }
 
-  // Larger square HUD marker for an at-risk BIM building.
+  // Larger glowing orb for an at-risk BIM building.
   function makeBuildingImpactSymbol(depth, threshold) {
     const c = depthSeverity(depth, threshold).color;
     return {
       type: "point-3d",
       symbolLayers: [
-        {
-          type: "icon",
-          resource: { primitive: "square" },
-          material: { color: [c[0], c[1], c[2], 0.15] },
-          size: 12,
-          outline: { color: c, size: 1.5 }
-        },
+        orbLayer(c, BUILDING_ORB_SIZE),
         {
           type: "icon",
           resource: { href: RISK_GLYPHS.building },
-          material: { color: [255, 255, 255, 0.85] },
-          size: 8
+          material: { color: [255, 255, 255, 0.9] },
+          size: 9
         }
       ],
       verticalOffset: { screenLength: 44, maxWorldLength: 130, minWorldLength: 30 },
       callout: { type: "line", size: 0.75, color: [255, 255, 255, 0.4] }
     };
+  }
+
+  // Scene-level bloom: only emissive surfaces (our orbs) glow — the reality
+  // mesh, BIM and terrain are untouched. Enabled once the view is ready.
+  const SCENE_GLOW = 0.85; // webscene Glow intensity, 0..1
+  function enableSceneGlow() {
+    const lighting = view.environment && view.environment.lighting;
+    if (lighting) lighting.glow = new Glow({ intensity: SCENE_GLOW });
   }
 
   /**
@@ -1107,6 +1134,7 @@ function initApp() {
     .when(function () {
       settled = true;
       clearTimeout(watchdog);
+      enableSceneGlow();
       buildLayerToggles();
       buildSurgeControl();
       setupRainToggle();

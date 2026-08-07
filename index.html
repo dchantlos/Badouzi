@@ -78,6 +78,7 @@
       <section id="surgeImpact" class="risk-panel" aria-label="Features at risk">
         <header class="card-head">
           <h2 class="card-title">Features at Risk</h2>
+          <span class="card-sub">Collected by ArcGIS Field Maps</span>
         </header>
         <div class="impact-head">
           <span class="impact-dot"></span>
@@ -104,6 +105,32 @@
 
     <!-- ArcGIS Slice / Measurement widget host (top-right) -->
     <div id="toolContainer" class="tool-widget-host"></div>
+
+    <!-- Live local weather (top-right) — Open-Meteo, populated by weather.js -->
+    <section class="weather-panel" id="weatherPanel" aria-label="Local weather conditions">
+      <header class="weather-head">
+        <div class="weather-loc">
+          <span class="weather-title">Local Weather</span>
+          <span class="weather-place">Badouzi &middot; Keelung</span>
+        </div>
+        <span class="weather-src" id="weatherStatus">Live</span>
+      </header>
+      <div class="weather-now">
+        <div class="weather-icon" id="weatherIcon"></div>
+        <div class="weather-temp">
+          <span class="weather-temp-val" id="weatherTemp">&mdash;</span>
+          <span class="weather-cond" id="weatherCond">Loading&hellip;</span>
+        </div>
+      </div>
+      <div class="weather-metrics">
+        <div class="wx-metric"><span class="wx-k">Feels</span><span class="wx-v" id="weatherFeels">&mdash;</span></div>
+        <div class="wx-metric"><span class="wx-k">Humidity</span><span class="wx-v" id="weatherHum">&mdash;</span></div>
+        <div class="wx-metric"><span class="wx-k">Wind</span><span class="wx-v" id="weatherWind">&mdash;</span></div>
+        <div class="wx-metric"><span class="wx-k">Rain</span><span class="wx-v" id="weatherPrecip">&mdash;</span></div>
+      </div>
+      <div class="weather-forecast" id="weatherForecast" aria-label="5-day forecast"></div>
+      <p class="weather-updated" id="weatherUpdated"></p>
+    </section>
 
     <!-- Storm-surge tidal console — docked bottom-centre -->
     <section class="surge-console" aria-label="Sea level and storm surge simulator">
@@ -136,7 +163,7 @@
       <div id="inspectorBody" class="inspector-body"></div>
     </div>
 
-    <!-- Powered by Esri attribution badge (top-right) -->
+    <!-- Powered by Esri attribution badge (bottom-left) -->
     <a
       class="esri-badge"
       href="https://www.esri.com"
