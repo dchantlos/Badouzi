@@ -1,28 +1,50 @@
 /* ============================================================
-   Badouzi Port Digital Twin — "Deep Current" theme
-   Oceanic navy + seafoam / marine-blue, fluid frosted-glass modules
+   Badouzi Port Digital Twin — dark glass theme
+   Matches the Construction Timelapse app: near-black glass
+   panels, crisp light type and neon-cyan accents. Panels sit
+   over a bright photo-real scene, so their opacity is a little
+   higher than the timelapse's to read with the same contrast.
    ============================================================ */
 
 :root {
-  --bg: #081b26;                       /* deep water */
-  --glass-bg: rgba(26, 42, 58, 0.46);  /* frosted seawater (heavy transparency) */
-  --glass-bg-strong: rgba(22, 46, 62, 0.62);
-  --glass-border: rgba(190, 233, 255, 0.10);
-  --glass-border-hover: rgba(190, 233, 255, 0.28);
-  --text: #eaf6fb;
-  --text-dim: #9db6c6;
-  --accent: #63e6c8;                   /* seafoam */
-  --accent-2: #4aa8f0;                 /* crisp marine blue */
-  --accent-glow: rgba(99, 230, 200, 0.5);
-  --coral: #ff7a66;                    /* vibrant coral (warnings) */
-  --coral-glow: rgba(255, 122, 102, 0.55);
-  --danger: #ff7a66;                   /* alias -> coral */
-  --radius: 22px;                      /* soft, fluid corners */
-  --radius-sm: 16px;
+  --bg: #060912;
+  --glass-bg: rgba(6, 9, 16, 0.78);
+  --glass-bg-strong: rgba(4, 6, 12, 0.88);
+  --glass-border: rgba(140, 170, 230, 0.18);
+  --glass-border-soft: rgba(140, 170, 230, 0.1);
+  --glass-border-hover: rgba(140, 170, 230, 0.34);
+  --text: #e8eefc;
+  --text-dim: #c2cfee;
+  --text-faint: #aab6d4;
+  --label: #d1d5db;                    /* crisp light gray for kickers */
+  --accent: #38e2ea;                   /* neon cyan */
+  --accent-bright: #48dfe5;
+  --accent-2: #7c5cff;                 /* violet */
+  --accent-glow: rgba(56, 226, 234, 0.45);
+  --glow-cyan: 0 0 8px rgba(72, 223, 229, 0.4);
+  --mint: #4ade80;                     /* complete results */
+  --type-bollards: #38e2ea;            /* asset types (chart + tiles) */
+  --type-streetlights: #a78bfa;
+  --type-bim: #f472d0;
+  --coral: #fb7185;                    /* exposure figures / warnings */
+  --coral-glow: rgba(251, 113, 133, 0.45);
+  --amber: #fbbf24;                    /* partial / incomplete results */
+  --danger: #fb7185;
+  --radius: 18px;
+  --radius-sm: 12px;
   --radius-pill: 999px;
-  --blur: 30px;                        /* heavy frosted-water blur */
+  --blur: 22px;
+  --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
   --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font);
+
+  /* Layout: left column (dock + weather), right exposure column, console */
+  --edge: 20px;
+  --gap: 14px;
+  --left-col: 292px;
+  --right-col: 344px;
+  --console-h: 86px;
+  --console-bottom: 22px;
 }
 
 * {
@@ -50,6 +72,32 @@ body {
   width: 100%;
 }
 
+/* Shared uppercase label (timelapse "kicker") */
+.kicker {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* ------------------------------------------------------------
+   Shared dark glass surface for every floating panel
+   ------------------------------------------------------------ */
+.dock-panel,
+.risk-panel,
+.surge-console,
+.assumptions-panel,
+.esri-badge {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 /* ------------------------------------------------------------
    Hide default ArcGIS UI, keep + style the navigation zoom
    ------------------------------------------------------------ */
@@ -62,18 +110,19 @@ body {
 }
 
 .esri-widget--button {
-  background: var(--glass-bg-strong) !important;
+  background: var(--glass-bg) !important;
   color: var(--text) !important;
-  border: 1px solid var(--glass-border) !important;
+  border: 1px solid var(--glass-border-soft) !important;
   backdrop-filter: blur(var(--blur));
   -webkit-backdrop-filter: blur(var(--blur));
-  transition: background 0.25s ease, border-color 0.25s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .esri-widget--button:hover {
-  background: rgba(99, 230, 200, 0.18) !important;
+  background: rgba(56, 226, 234, 0.16) !important;
   border-color: var(--accent) !important;
   color: var(--accent) !important;
+  box-shadow: 0 0 18px -4px var(--accent);
 }
 
 .esri-zoom .esri-widget--button {
@@ -90,7 +139,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 36%, #12405a 0%, #081b26 70%);
+  background: radial-gradient(circle at 50% 36%, #0d1a30 0%, #05070e 70%);
   opacity: 1;
   transition: opacity 1s ease;
 }
@@ -160,74 +209,61 @@ body {
   from { opacity: 0; transform: translateY(-10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes floatInLeft {
-  from { opacity: 0; transform: translateY(-50%) translateX(-24px); }
-  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
-}
-@keyframes floatInRight {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
 @keyframes floatInUp {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ============================================================
-   Unified left dock — title + layers + analysis, with the
-   Features-at-Risk drawer expanding beneath it
+   Left panel — title, live weather context, data layers, tools
    ============================================================ */
 .left-dock {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: var(--edge);
+  left: var(--edge);
   z-index: 100;
-  width: 270px;
-  max-width: calc(100vw - 40px);
+  width: var(--left-col);
+  max-width: calc(100vw - 2 * var(--edge));
+  /* Stop above the bottom-left Esri badge. */
+  max-height: calc(100% - 96px);
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 .dock-panel {
-  padding: 18px 20px 20px;
-  border-radius: var(--radius);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  box-shadow:
-    inset 0 2px 0 0 var(--accent),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 18px 48px rgba(0, 0, 0, 0.5);
+  flex: none;
+  padding: 16px 18px 18px;
   animation: floatIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
 }
 
 .dock-header {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--glass-border-soft);
 }
 
 .dock-section {
-  padding-top: 15px;
+  padding-top: 14px;
 }
 
 .dock-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  font-size: 0.66rem;
+  margin-bottom: 10px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 1.6px;
-  color: var(--text-dim);
+  color: var(--label);
 }
 
 .brand-mark {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   flex: none;
   border-radius: 50%;
   background:
@@ -239,151 +275,45 @@ body {
 .brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
+  gap: 2px;
+  line-height: 1.15;
 }
 
 .brand-title {
-  font-size: 0.92rem;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.005em;
   color: var(--text);
 }
 
 .brand-sub {
-  font-size: 0.64rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-/* ============================================================
-   Card header (used by the Features-at-Risk drawer)
-   ============================================================ */
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 15px;
-}
-
-.card-title {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.6px;
-  color: var(--text-dim);
-}
-
-/* Data-source attribution beneath the Features at Risk title. */
-#surgeImpact .card-head {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-}
-.card-sub {
-  font-size: 0.62rem;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
+/* Small cyan badge, e.g. "3D" beside the Tools heading */
 .card-tag {
   margin-left: auto;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: #06232e;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 226, 234, 0.4);
+  background: rgba(56, 226, 234, 0.14);
+  color: var(--accent-bright);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
-.card-tag.risk-tag {
-  color: #33110b;
-  background: linear-gradient(135deg, #ffc0ab, var(--coral));
-}
-
-/* ============================================================
-   Storm-surge tidal console — docked bottom-centre
-   ============================================================ */
-.surge-console {
-  position: absolute;
-  z-index: 100;
-  bottom: 22px;
-  left: 360px;
-  right: 360px;
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 15px 24px;
-  border-radius: var(--radius-pill);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 22px 55px rgba(0, 0, 0, 0.55);
-  animation: floatInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
-}
-
-.console-intro {
-  display: flex;
-  flex-direction: column;
-  flex: none;
-  line-height: 1.25;
-}
-
-.console-eyebrow {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.console-title {
-  font-size: 0.98rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.2px;
-}
-
-.console-readout {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex: none;
-  gap: 2px;
-  min-width: 118px;
-}
-
-.console-rain {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: none;
-}
-
-/* Hidden for scenarios where rain doesn't apply (Normal / +1m). */
-.console-rain[hidden] {
-  display: none;
-}
-
-.console-rain-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  color: var(--text-dim);
-}
-
-/* ============================================================
+/* ------------------------------------------------------------
    Data-layer switches — rows inside the left dock
-   ============================================================ */
+   ------------------------------------------------------------ */
 .dock-layers {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dock-layers .toggle-row {
@@ -391,33 +321,35 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  transition: background 0.25s ease;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid transparent;
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .dock-layers .toggle-row:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(56, 226, 234, 0.1);
+  border-color: rgba(56, 226, 234, 0.25);
 }
 
 .toggle-label {
-  font-size: 0.85rem;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 
 .toggle-row.missing {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .toggle-row.missing .toggle-label {
-  color: var(--text-dim);
+  color: var(--text-faint);
   font-style: italic;
 }
 
-/* iOS-style switch */
+/* Toggle switch */
 .switch {
   position: relative;
   flex-shrink: 0;
@@ -435,31 +367,39 @@ body {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
   border-radius: 7px;
-  transition: background 0.3s ease, box-shadow 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .slider::before {
   content: "";
   position: absolute;
-  height: 18px;
-  width: 18px;
+  height: 16px;
+  width: 16px;
   left: 3px;
   top: 3px;
-  background: #eaf4f1;
+  background: var(--text-dim);
   border-radius: 5px;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
 }
 
 .switch input:checked + .slider {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 14px var(--accent-glow);
+  background: rgba(56, 226, 234, 0.22);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -4px var(--accent);
 }
 
 .switch input:checked + .slider::before {
   transform: translateX(20px);
-  background: #fff;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .switch input:disabled + .slider {
@@ -467,92 +407,8 @@ body {
   cursor: not-allowed;
 }
 
-/* ============================================================
-   Tidal scrubber — 4 scenario stops laid out horizontally
-   ============================================================ */
-.surge-scrubber {
-  position: relative;
-  display: flex;
-  flex: 1;
-  gap: 6px;
-  padding: 5px;
-  border-radius: var(--radius-pill);
-  background: rgba(6, 22, 32, 0.5);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
-}
-
-.segment {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 9px 10px;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  overflow: hidden;
-  transition: background 0.3s ease, color 0.3s ease, transform 0.15s ease,
-    box-shadow 0.3s ease;
-}
-
-.segment .seg-value {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-
-.segment .seg-label {
-  font-size: 0.62rem;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.segment:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text);
-}
-
-.segment:active {
-  transform: scale(0.96);
-}
-
-.segment.active {
-  color: #06232e;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 8px 20px rgba(74, 168, 240, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.segment.active .seg-label {
-  color: rgba(6, 35, 46, 0.72);
-}
-
-/* Console readout (active scenario name) */
-.readout-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-}
-
-.readout-value {
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  color: var(--accent);
-  transition: color 0.3s ease;
-}
-
 /* ------------------------------------------------------------
-   Analysis tool buttons
+   Tool buttons (Slice / Distance / Home view / Clear)
    ------------------------------------------------------------ */
 .tool-grid {
   display: grid;
@@ -564,43 +420,47 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 12px;
-  border-radius: 14px;
+  padding: 10px 11px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border-soft);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease,
-    transform 0.15s ease, box-shadow 0.3s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .tool-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--glass-border-hover);
+  background: rgba(56, 226, 234, 0.16);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 18px -4px var(--accent);
 }
 
 .tool-btn:active {
   transform: scale(0.96);
 }
 
+.tool-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .tool-icon {
-  font-size: 1rem;
+  font-size: 15px;
   line-height: 1;
   color: var(--accent);
 }
 
 .tool-btn.active {
-  color: #06232e;
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 8px 20px rgba(74, 168, 240, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.tool-btn.active .tool-icon {
-  color: #06232e;
+  background: rgba(56, 226, 234, 0.2);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  box-shadow: 0 0 20px -4px var(--accent);
 }
 
 .tool-clear .tool-icon {
@@ -608,41 +468,201 @@ body {
 }
 
 .tool-clear:hover {
-  border-color: rgba(255, 122, 102, 0.5);
+  background: rgba(251, 113, 133, 0.12);
+  border-color: rgba(251, 113, 133, 0.6);
+  color: var(--danger);
+  box-shadow: 0 0 18px -6px var(--danger);
 }
 
-/* Host for Slice / Measurement widgets — themed to match the glass UI */
+/* ============================================================
+   What-if water-level console — docked bottom-centre. It always
+   leaves room for the exposure column, so opening a scenario
+   never moves the buttons under the presenter's cursor.
+   ============================================================ */
+.surge-console {
+  position: absolute;
+  z-index: 100;
+  bottom: var(--console-bottom);
+  left: calc(var(--edge) + var(--right-col) + var(--gap));
+  right: calc(var(--edge) + var(--right-col) + var(--gap));
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px;
+  animation: floatInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+
+.console-intro {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.console-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  text-shadow: var(--glow-cyan);
+}
+
+.console-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Segmented scenario control (timelapse toggle group) */
+.surge-scrubber {
+  position: relative;
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-soft);
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.segment .seg-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.segment .seg-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.segment:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.segment:active {
+  transform: scale(0.96);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.segment.active {
+  color: var(--accent-bright);
+  background: rgba(56, 226, 234, 0.18);
+  border-color: rgba(56, 226, 234, 0.55);
+  box-shadow: 0 0 18px -6px var(--accent);
+  text-shadow: var(--glow-cyan);
+}
+
+.console-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  gap: 2px;
+  min-width: 0;
+}
+
+.readout-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* The compact label carries the "not a forecast" caveat when the
+   console intro is hidden on narrower screens. */
+.rl-compact {
+  display: none;
+}
+
+.readout-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-bright);
+  text-shadow: var(--glow-cyan);
+}
+
+/* Reference / illustrative caption under the active scenario name */
+.readout-note {
+  max-width: 240px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: right;
+  color: var(--text-faint);
+}
+
+.console-rain {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+/* Hidden for scenarios where rain doesn't apply (Normal / +1m). */
+.console-rain[hidden] {
+  display: none;
+}
+
+.console-rain-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
 /* =============================================================================
    Powered by Esri attribution badge (bottom-left)
    ============================================================================= */
 .esri-badge {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: var(--edge);
+  left: var(--edge);
   z-index: 95;
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 8px 14px 8px 10px;
   border-radius: var(--radius-pill);
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
   text-decoration: none;
   color: var(--text-dim);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  transition: color 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, transform 0.25s ease;
+  transition: color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 .esri-badge:hover {
   color: var(--text);
   border-color: var(--glass-border-hover);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45),
-    0 0 18px -4px var(--accent-glow);
+  box-shadow: var(--shadow), 0 0 18px -4px var(--accent-glow);
   transform: translateY(-1px);
 }
 .esri-badge__logo {
@@ -655,16 +675,20 @@ body {
   font-weight: 700;
 }
 
-/* Sits below the live weather panel (top-right); only shown when a tool runs. */
+/* Slice / Distance widgets: top-right, left of the exposure column when open */
 .tool-widget-host {
   position: absolute;
-  top: 340px;
-  right: 20px;
+  top: var(--edge);
+  right: var(--edge);
   z-index: 90;
   width: 300px;
-  max-width: calc(100vw - 40px);
-  max-height: calc(100% - 360px);
+  max-width: calc(100vw - 2 * var(--edge));
+  max-height: calc(100% - 2 * var(--edge) - var(--console-h) - var(--console-bottom));
   overflow: auto;
+}
+
+body.exposure-open .tool-widget-host {
+  right: calc(var(--edge) + var(--right-col) + var(--gap));
 }
 
 .tool-widget-host:empty {
@@ -678,112 +702,112 @@ body {
   border-radius: var(--radius) !important;
   backdrop-filter: blur(var(--blur)) saturate(140%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
 /* =============================================================================
-   Live local weather panel (top-right) — Open-Meteo
+   Current weather — a section of the top-left panel, directly under the
+   Badouzi Port title (Open-Meteo context only)
    ============================================================================= */
 .weather-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 96;
-  width: 292px;
-  max-width: calc(100vw - 40px);
-  padding: 16px 18px 14px;
-  border-radius: var(--radius);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  box-shadow:
-    inset 0 2px 0 0 var(--accent-2),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 18px 48px rgba(0, 0, 0, 0.5);
-  color: var(--text);
-  animation: floatIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
-}
-
-.weather-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.weather-loc {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.weather-title {
-  font-size: 0.66rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.6px;
-  color: var(--text-dim);
-}
-
-.weather-place {
-  font-size: 0.82rem;
-  font-weight: 600;
+  border-bottom: 1px solid var(--glass-border-soft);
   color: var(--text);
-  margin-top: 2px;
 }
 
+.weather-panel .dock-section-title {
+  margin-bottom: 4px;
+}
+
+/* Feed status chip — LIVE / DELAYED / CACHED / OFFLINE, sized to read across
+   the room (styled like the timelapse's glowing date chip). */
 .weather-src {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   flex: none;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+  padding: 4px 13px 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(56, 226, 234, 0.45);
+  background: rgba(56, 226, 234, 0.12);
+  color: var(--accent-bright);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
   text-transform: uppercase;
-  color: var(--accent);
+  text-shadow: var(--glow-cyan);
   white-space: nowrap;
 }
 
 .weather-src::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 8px var(--accent-glow);
+  box-shadow: 0 0 10px var(--accent);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.72); }
+}
+
+.weather-src.pending {
+  color: var(--text-dim);
+  border-color: var(--glass-border-hover);
+  background: rgba(255, 255, 255, 0.05);
+  text-shadow: none;
+}
+.weather-src.pending::before {
+  background: var(--text-faint);
+  box-shadow: none;
 }
 
 .weather-src.stale {
-  color: var(--text-dim);
+  color: var(--amber);
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.1);
+  text-shadow: none;
 }
 .weather-src.stale::before {
-  background: var(--text-dim);
+  background: var(--amber);
   box-shadow: none;
+  animation: none;
 }
 
 .weather-src.off {
   color: var(--coral);
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.1);
+  text-shadow: none;
 }
 .weather-src.off::before {
   background: var(--coral);
   box-shadow: 0 0 8px var(--coral-glow);
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-src::before {
+    animation: none;
+  }
 }
 
 .weather-now {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 0 12px;
+  padding: 10px 0 8px;
 }
 
 .weather-icon {
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   flex: none;
   color: var(--accent);
   filter: drop-shadow(0 0 10px var(--accent-glow));
@@ -801,25 +825,26 @@ body {
 }
 
 .weather-temp-val {
-  font-size: 2.5rem;
+  font-size: 36px;
   font-weight: 800;
-  letter-spacing: -1.5px;
+  letter-spacing: -1px;
+  color: var(--text);
 }
 
 .weather-cond {
-  font-size: 0.82rem;
+  margin-top: 3px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-dim);
-  margin-top: 3px;
 }
 
 .weather-metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--glass-border);
-  border-bottom: 1px solid var(--glass-border);
+  padding: 10px 0;
+  border-top: 1px solid var(--glass-border-soft);
+  border-bottom: 1px solid var(--glass-border-soft);
 }
 
 .wx-metric {
@@ -830,54 +855,72 @@ body {
 }
 
 .wx-k {
-  font-size: 0.58rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
+  color: var(--label);
+}
+
+/* Accumulation interval under "Precip" (from the provider response) */
+.wx-k-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-faint);
+}
+
+.wx-k-sub:empty {
+  display: none;
 }
 
 .wx-v {
-  font-size: 0.82rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .weather-forecast {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 4px;
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .wx-day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 7px 2px;
-  border-radius: 13px;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 11px;
 }
 
 .wx-day.today {
-  background: rgba(99, 230, 200, 0.12);
+  background: rgba(56, 226, 234, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(56, 226, 234, 0.25);
 }
 
 .wx-day-name {
-  font-size: 0.6rem;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
 
 .wx-day.today .wx-day-name {
-  color: var(--accent);
+  color: var(--accent-bright);
 }
 
 .wx-day-icon {
   width: 22px;
   height: 22px;
-  color: var(--accent-2);
+  color: var(--accent);
 }
 .wx-day-icon svg {
   width: 100%;
@@ -886,14 +929,14 @@ body {
 }
 
 .wx-day-pop {
-  font-size: 0.56rem;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--accent-2);
+  color: var(--accent-bright);
   min-height: 0.72rem;
 }
 
 .wx-day-hilo {
-  font-size: 0.64rem;
+  font-size: 11px;
   color: var(--text-dim);
 }
 .wx-day-hilo b {
@@ -902,277 +945,712 @@ body {
 }
 
 .weather-updated {
-  margin-top: 10px;
-  font-size: 0.56rem;
-  letter-spacing: 0.4px;
-  color: var(--text-dim);
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
   text-align: right;
 }
 
-/* ------------------------------------------------------------
-   Footer
-   ------------------------------------------------------------ */
-.panel-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--glass-border);
-  font-size: 0.76rem;
-  color: var(--text-dim);
-  letter-spacing: 0.4px;
+.weather-note {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  text-align: right;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* ------------------------------------------------------------
-   Surge inundation impact readout
-   ------------------------------------------------------------ */
-/* ------------------------------------------------------------
-   Features-at-Risk — drawer that expands beneath the left dock
-   when a surge scenario is selected
-   ------------------------------------------------------------ */
+/* =============================================================================
+   Asset exposure — right-hand presentation panel. The type scale is sized to
+   be read across a large room; height queries below step it down so the
+   panel fits without scrolling down to 1366 x 768.
+   ============================================================================= */
 .risk-panel {
-  overflow: hidden;
-  max-height: 0;
-  margin-top: 0;
-  padding: 0 20px;
-  border-radius: var(--radius);
+  --x-pad: 20px;
+  --x-gap: 14px;
+  --x-title: 12.5px;
+  --x-chip: 13px;
+  --x-scenario: 15px;
+  --x-num: 36px;
+  --x-label: 14px;
+  --x-tile-num: 20px;
+  --x-tile-label: 12px;
+  --x-kicker: 11px;
+  --x-value: 36px;
+  --x-body: 13px;
+  --x-note: 12.5px;
+  --x-small: 12.5px;
+  --x-row: 14px;
+  --x-row-pad: 6px;
+  --x-bar: 14px;
+  --x-ring: 62px;
+
+  position: absolute;
+  z-index: 100;
+  top: var(--edge);
+  right: var(--edge);
+  width: var(--right-col);
+  max-width: calc(100vw - 2 * var(--edge));
+  max-height: calc(100% - 2 * var(--edge));
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-gap);
+  padding: var(--x-pad);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 170, 230, 0.25) transparent;
   background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  box-shadow:
-    inset 0 2px 0 0 var(--coral),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 18px 48px rgba(0, 0, 0, 0.5);
   opacity: 0;
-  transform: translateY(-8px);
+  visibility: hidden;
+  transform: translateX(24px);
   pointer-events: none;
-  transition: max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    margin-top 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    padding 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.35s ease,
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.45s;
 }
 
 .risk-panel.visible {
-  max-height: 520px;
-  margin-top: 10px;
-  padding: 16px 20px 18px;
   opacity: 1;
-  transform: translateY(0);
+  visibility: visible;
+  transform: none;
   pointer-events: auto;
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s;
 }
 
-.risk-panel.alert {
-  box-shadow:
-    inset 0 2px 0 0 var(--coral),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 18px 48px rgba(0, 0, 0, 0.5),
-    0 0 46px -18px var(--coral-glow);
+.risk-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.risk-panel::-webkit-scrollbar-thumb {
+  background: rgba(140, 170, 230, 0.25);
+  border-radius: 999px;
 }
 
-.impact-head {
+.risk-panel .kicker {
+  font-size: var(--x-kicker);
+  letter-spacing: 0.06em;
+}
+
+.exp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exp-head-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.impact-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--coral);
-  box-shadow: 0 0 10px rgba(255, 122, 102, 0.7);
-  flex: none;
-}
-
-.impact-count {
-  font-family: var(--font-mono);
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.1px;
-}
-
-.impact-detail {
-  margin-top: 6px;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  color: var(--text-dim);
-}
-
-/* Financial Impact Calculator — estimated value at risk */
-.value-at-risk {
-  margin-top: 13px;
-  padding-top: 13px;
-  border-top: 1px solid var(--glass-border);
-}
-
-.value-label {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.value-amount {
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 1.9rem;
+.exp-title {
+  font-size: var(--x-title);
   font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.5px;
-  color: var(--danger);
-  text-shadow: 0 0 22px var(--coral-glow);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
 }
 
-.value-disclaimer {
-  margin-top: 6px;
-  font-size: 0.64rem;
-  font-style: italic;
-  line-height: 1.4;
+/* Which scenario these figures belong to (readable from the back row) */
+.exp-scenario {
+  font-size: var(--x-scenario);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--accent-bright);
+  text-shadow: var(--glow-cyan);
+}
+
+.exp-scenario:empty {
+  display: none;
+}
+
+/* Analysis result state: Complete / Partial / Unavailable / Analyzing */
+.status-chip {
+  flex: none;
+  padding: 3px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-size: var(--x-chip, 12px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-chip:empty {
+  display: none;
+}
+.status-complete {
+  color: var(--mint);
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(74, 222, 128, 0.1);
+}
+.status-partial {
+  color: var(--amber);
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.1);
+}
+.status-unavailable {
+  color: var(--coral);
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.1);
+}
+.status-loading {
   color: var(--text-dim);
-  opacity: 0.8;
+  border-color: var(--glass-border-hover);
 }
 
-.risk-legend {
+.analysis-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+.analysis-status[hidden] {
+  display: none;
+}
+.analysis-status p {
+  flex: 1;
+  font-size: var(--x-small);
+  line-height: 1.45;
+  color: #fde7b0;
+}
+.mini-btn {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--amber);
+  font-family: inherit;
+  font-size: var(--x-small);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.mini-btn:hover {
+  background: rgba(251, 191, 36, 0.22);
+}
+
+/* Headline count: big number + what it counts */
+.exp-count {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
+.exp-count-num {
+  font-size: var(--x-num);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.exp-count-num.is-warn {
+  color: var(--amber);
+}
+
+.exp-count-label {
+  font-size: var(--x-label);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-dim);
+}
+
+/* Per-type breakdown tiles (timelapse metric tiles) */
+.exp-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.exp-tiles:empty {
+  display: none;
+}
+
+.exp-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px 9px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-soft);
+}
+
+.exp-tile strong {
+  font-size: var(--x-tile-num);
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.exp-tile span {
+  overflow: hidden;
+  font-size: var(--x-tile-label);
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.exp-tile small {
+  font-size: calc(var(--x-small) - 2px);
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.exp-tile.is-bollards,
+.exp-tile.is-streetlights,
+.exp-tile.is-bim {
+  box-shadow: inset 3px 0 0 var(--c);
+}
+
+.exp-tile.is-warn {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.exp-tile.is-warn strong {
+  color: var(--amber);
+}
+
+.exp-small {
+  font-size: var(--x-small);
+  color: var(--text-dim);
+}
+
+.exp-small[hidden] {
+  display: none;
+}
+
+/* Illustrative exposed value (USD) */
+.exp-value {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--x-gap);
+  border-top: 1px solid var(--glass-border-soft);
+}
+
+.exp-value-num {
+  font-size: var(--x-value);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--coral);
+  text-shadow: 0 0 24px var(--coral-glow);
+}
+
+/* Incomplete subtotal shown only alongside a withheld (—) total */
+.value-subtotal {
+  font-size: var(--x-body);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--amber);
+}
+
+.value-subtotal[hidden] {
+  display: none;
+}
+
+.exp-note {
+  margin-top: 2px;
+  font-size: var(--x-note);
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+/* Scenario comparison — stacked value bars + land rings */
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: var(--x-gap);
+  border-top: 1px solid var(--glass-border-soft);
+}
+
+.cmp-sub {
+  margin-top: 3px;
+  font-size: var(--x-small);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.cmp-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cmp-row,
+.cmp-ring {
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cmp-row:hover,
+.cmp-ring:hover {
+  background: rgba(56, 226, 234, 0.08);
+}
+
+.cmp-row.active,
+.cmp-ring.active {
+  background: rgba(56, 226, 234, 0.12);
+  border-color: rgba(56, 226, 234, 0.5);
+  box-shadow: 0 0 16px -8px var(--accent);
+}
+
+.cmp-row:focus-visible,
+.cmp-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cmp-row {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  padding: var(--x-row-pad) 10px;
+  border-radius: 10px;
+  font-size: var(--x-row);
+  text-align: left;
+}
+
+.cmp-level,
+.cmp-ring-label {
+  font-weight: 800;
+}
+
+.cmp-row.active .cmp-level,
+.cmp-ring.active .cmp-ring-label {
+  color: var(--accent-bright);
+  text-shadow: var(--glow-cyan);
+}
+
+/* Zero-based track; segments are sized against one shared scale */
+.cmp-track {
+  position: relative;
+  display: flex;
+  height: var(--x-bar);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.cmp-seg {
+  flex: none;
+  width: 0;
+  height: 100%;
+  background: var(--c);
+  box-shadow: inset -2px 0 0 rgba(4, 6, 12, 0.85);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmp-msg {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 13px;
-  font-size: 0.68rem;
-  letter-spacing: 0.3px;
+  padding: 0 8px;
+  overflow: hidden;
+  font-size: calc(var(--x-row) - 2px);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cmp-msg:empty {
+  display: none;
+}
+
+.cmp-msg.is-muted {
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.cmp-msg.is-warn {
+  color: var(--amber);
+}
+
+.cmp-val {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-val strong {
+  font-size: var(--x-row);
+  font-weight: 700;
+}
+
+.cmp-val small {
+  font-size: calc(var(--x-row) - 2.5px);
+  font-weight: 500;
   color: var(--text-dim);
 }
 
-.risk-legend::before {
-  content: "";
-  flex: none;
-  width: 20px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, rgba(255, 122, 102, 0), var(--coral));
-  box-shadow: 0 0 10px var(--coral-glow);
+.cmp-val small:empty {
+  display: none;
 }
 
-/* ------------------------------------------------------------
-   Water-depth severity legend + critical-inundation alerts
-   ------------------------------------------------------------ */
-.depth-legend {
+/* Asset-type colours (tiles, bar segments, legend) */
+.is-bollards {
+  --c: var(--type-bollards);
+}
+.is-streetlights {
+  --c: var(--type-streetlights);
+}
+.is-bim {
+  --c: var(--type-bim);
+}
+
+.cmp-legend {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-  margin-top: 13px;
-  font-size: 0.68rem;
-  letter-spacing: 0.2px;
+  gap: 4px 14px;
+  font-size: var(--x-small);
+  font-weight: 600;
   color: var(--text-dim);
 }
 
-.depth-key {
+.cmp-key {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.depth-swatch {
-  flex: none;
+.cmp-key::before {
+  content: "";
   width: 10px;
   height: 10px;
+  border-radius: 3px;
+  background: var(--c);
+  box-shadow: 0 0 8px -2px var(--c);
+}
+
+/* Land rings: share of sampled dry land at or below each level */
+.cmp-land {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cmp-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  font-size: var(--x-row);
+}
+
+.cmp-gauge {
+  position: relative;
+  width: var(--x-ring);
+  height: var(--x-ring);
+}
+
+.cmp-gauge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cmp-gauge-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 9;
+}
+
+.cmp-gauge-bar {
+  fill: none;
+  stroke: url(#waterGrad);
+  stroke-width: 9;
+  stroke-dasharray: 0 999;
+  filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.65));
+  transition: stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmp-gauge-pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--x-row) - 1.5px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.cmp-ring.is-off .cmp-gauge-pct {
+  color: var(--text-faint);
+}
+
+.cmp-note {
+  font-size: var(--x-small);
+  color: var(--text-faint);
+}
+
+.cmp-note.is-warn {
+  color: var(--amber);
+}
+
+.cmp-note[hidden] {
+  display: none;
+}
+
+.cmp-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmp-seg,
+  .cmp-gauge-bar {
+    transition: none;
+  }
+}
+
+/* Footer: depth legend, assumptions link, data credit */
+.exp-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: calc(var(--x-gap) - 4px);
+  border-top: 1px solid var(--glass-border-soft);
+}
+
+.depth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: var(--x-small);
+  color: var(--text-dim);
+}
+
+.depth-legend-title {
+  font-size: calc(var(--x-small) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.depth-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.depth-swatch {
+  flex: none;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: var(--c);
   box-shadow: 0 0 8px -1px var(--c);
 }
 
-/* Site inundation coverage bar */
-.coverage {
-  margin-top: 10px;
-  opacity: 0;
-  max-height: 0;
-  overflow: hidden;
-  transform: translateY(-4px);
-  transition: opacity 0.3s ease, max-height 0.35s ease, transform 0.3s ease;
+.link-btn {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-bright);
+  font-family: inherit;
+  font-size: var(--x-body);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
-
-.coverage.visible {
-  opacity: 1;
-  max-height: 60px;
-  transform: translateY(0);
+.link-btn::before {
+  content: "\24D8\00a0";
+  display: inline-block;
+  text-decoration: none;
 }
-
-.coverage-track {
-  height: 7px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.coverage-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--accent-2), var(--coral));
-  box-shadow: 0 0 12px rgba(255, 122, 102, 0.5);
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.coverage-text {
-  display: block;
-  margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
+.link-btn:hover {
   color: var(--text);
-  letter-spacing: -0.1px;
+}
+
+.exp-credit {
+  font-size: calc(var(--x-small) - 1px);
+  color: var(--text-faint);
+}
+
+/* "More" cue pinned to the bottom of the panel while it can scroll further */
+.more-hint {
+  position: sticky;
+  bottom: -6px;
+  align-self: center;
+  flex: none;
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border-hover);
+  background: rgba(4, 6, 12, 0.95);
+  color: var(--accent-bright);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 -10px 20px 8px rgba(4, 6, 12, 0.9);
+}
+
+.more-hint[hidden] {
+  display: none;
 }
 
 /* ------------------------------------------------------------
-   Click-to-inspect asset card
+   Assumptions & method panel (opened from the exposure panel)
    ------------------------------------------------------------ */
-.inspector-card {
+.assumptions-panel {
   position: absolute;
-  bottom: 22px;
-  right: 22px;
-  z-index: 95;
-  width: 300px;
-  max-width: calc(100vw - 44px);
-  padding: 16px 18px;
-  border-radius: var(--radius);
+  z-index: 110;
+  top: var(--edge);
+  right: calc(var(--edge) + var(--right-col) + var(--gap));
+  width: 400px;
+  max-width: calc(100vw - var(--right-col) - 2 * var(--edge) - var(--gap) - var(--edge));
+  max-height: calc(100% - var(--edge) - var(--console-bottom) - var(--console-h) - 12px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 20px 22px 22px;
   background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  box-shadow:
-    inset 0 2px 0 0 var(--accent),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 18px 50px rgba(0, 0, 0, 0.55);
-  opacity: 0;
-  transform: translateY(14px) scale(0.98);
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  animation: floatIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.inspector-card.visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
+.assumptions-panel[hidden] {
+  display: none;
 }
 
-.inspector-header {
+.assumptions-panel:focus {
+  outline: none;
+}
+
+.assumptions-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1180,54 +1658,142 @@ body {
   margin-bottom: 8px;
 }
 
-.inspector-title {
-  font-size: 0.95rem;
+.assumptions-title {
+  font-size: 16px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: 0.2px;
+}
+
+.assumptions-body h3 {
+  margin-top: 13px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+
+.assumptions-body p {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.assumptions-body .assumptions-lede {
+  margin-top: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.assumptions-values {
+  list-style: none;
+  margin-top: 8px;
+  display: grid;
+  gap: 5px;
+}
+
+.assumptions-values li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-soft);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.assumptions-values strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   Inspector — Location Flood Check / asset details. A section of
+   the top-left panel that takes the weather section's place while
+   open (body.inspecting), so it never covers the 3D scene.
+   ------------------------------------------------------------ */
+.inspector-card {
+  display: none;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border-soft);
+}
+
+.inspector-card.visible {
+  display: block;
+  animation: floatIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+body.inspecting .weather-panel {
+  display: none;
+}
+
+/* Header reuses .dock-section-title; title on the left, close on the right */
+.inspector-header {
+  margin-bottom: 4px;
+}
+
+.inspector-title {
+  min-width: 0;
+  overflow: hidden;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent-bright);
 }
 
 .inspector-close {
   flex: none;
+  margin-left: auto;
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border-soft);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-dim);
-  font-size: 0.75rem;
+  font-family: inherit;
+  font-size: 11px;
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .inspector-close:hover {
-  color: var(--text);
-  border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(56, 226, 234, 0.12);
+}
+
+.inspector-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .inspector-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 14px;
-  padding: 6px 0;
+  gap: 12px;
+  padding: 5px 0;
 }
 
 .inspector-row + .inspector-row {
-  margin-top: 2px;
+  border-top: 1px solid rgba(140, 170, 230, 0.07);
 }
 
 .inspector-label {
-  font-size: 0.78rem;
+  flex: none;
+  max-width: 55%;
+  font-size: 12.5px;
   color: var(--text-dim);
-  text-transform: capitalize;
 }
 
 .inspector-value {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 600;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text);
   text-align: right;
   word-break: break-word;
@@ -1239,47 +1805,315 @@ body {
 }
 
 .inspector-row--note .inspector-value {
-  font-family: var(--font);
+  display: block;
+  font-size: 12px;
   font-weight: 500;
+  line-height: 1.45;
   text-align: left;
-  color: var(--text-dim);
-  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* "Zoom to asset" — styled like the panel's tool buttons */
+.inspector-action {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 226, 234, 0.45);
+  background: rgba(56, 226, 234, 0.1);
+  color: var(--accent-bright);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inspector-action:hover {
+  background: rgba(56, 226, 234, 0.2);
+  box-shadow: 0 0 18px -4px var(--accent);
 }
 
 /* ------------------------------------------------------------
-   Responsive
+   Responsive — widths first, then heights (heights win when both apply)
    ------------------------------------------------------------ */
-@media (max-width: 1180px) {
-  .surge-console {
-    left: 20px;
-    right: 340px;
+@media (max-width: 1699px) {
+  :root {
+    --right-col: 336px;
   }
 
-  /* Bottom band is taken over by the surge console — drop the corner badge. */
+  /* Console sits between the two columns. */
+  .surge-console {
+    left: calc(var(--edge) + var(--left-col) + var(--gap));
+    gap: 14px;
+    padding: 11px 16px;
+  }
+
+}
+
+@media (max-width: 1500px) {
+  :root {
+    --right-col: 328px;
+  }
+
+  .console-intro {
+    display: none;
+  }
+
+  .rl-wide {
+    display: none;
+  }
+
+  .rl-compact {
+    display: inline;
+    color: var(--accent-bright);
+  }
+
+  .risk-panel {
+    --x-pad: 18px;
+    --x-tile-label: 11.5px;
+  }
+}
+
+@media (max-width: 1180px) {
+  :root {
+    --right-col: 320px;
+  }
+
+  /* Console spans the bottom; both columns stop above it. */
+  .surge-console {
+    left: var(--edge);
+    right: var(--edge);
+  }
+
+  .left-dock {
+    max-height: calc(100% - var(--edge) - var(--console-bottom) - var(--console-h) - 12px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .risk-panel {
+    max-height: calc(100% - var(--edge) - var(--console-bottom) - var(--console-h) - 12px);
+  }
+
+  .tool-widget-host,
+  body.exposure-open .tool-widget-host {
+    max-height: calc(100% - var(--edge) - var(--console-bottom) - var(--console-h) - 12px);
+  }
+
+  /* Bottom band is taken over by the console — drop the corner badge. */
   .esri-badge {
     display: none;
   }
 }
 
-@media (max-width: 760px) {
-  .surge-console {
-    left: 20px;
-    right: 20px;
+@media (max-height: 960px) {
+  .risk-panel {
+    --x-gap: 12px;
+    --x-row-pad: 5px;
+    --x-ring: 56px;
   }
 }
 
+/* Short screens (e.g. 1366 x 768 projectors): tighten the vertical rhythm. */
+@media (max-height: 820px) {
+  :root {
+    --console-h: 80px;
+    --console-bottom: 16px;
+  }
+
+  .left-dock {
+    gap: 10px;
+  }
+  .dock-panel {
+    padding: 12px 15px 14px;
+  }
+  .dock-header {
+    padding-bottom: 10px;
+  }
+  .dock-section {
+    padding-top: 10px;
+  }
+  .dock-section-title {
+    margin-bottom: 7px;
+  }
+  .dock-layers {
+    gap: 5px;
+  }
+  .dock-layers .toggle-row {
+    padding: 5px 11px;
+  }
+  .tool-grid {
+    gap: 6px;
+  }
+  .tool-btn {
+    padding: 7px 10px;
+  }
+
+  .weather-panel {
+    padding-bottom: 9px;
+  }
+  .weather-src {
+    font-size: 14.5px;
+    padding: 3px 11px 3px 9px;
+  }
+  .weather-now {
+    padding: 6px 0 5px;
+  }
+  .weather-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .weather-temp-val {
+    font-size: 30px;
+  }
+  .weather-metrics {
+    gap: 5px 14px;
+    padding: 7px 0;
+  }
+  .weather-forecast {
+    padding-top: 6px;
+  }
+  .wx-day {
+    gap: 2px;
+    padding: 4px 2px;
+  }
+  .weather-updated {
+    margin-top: 5px;
+  }
+
+  .surge-console {
+    padding: 9px 14px;
+  }
+  .segment {
+    padding: 5px 6px;
+  }
+
+  .risk-panel {
+    --x-pad: 16px;
+    --x-gap: 10px;
+    --x-title: 11.5px;
+    --x-chip: 12px;
+    --x-scenario: 14px;
+    --x-num: 30px;
+    --x-label: 13px;
+    --x-tile-num: 18px;
+    --x-tile-label: 11.5px;
+    --x-kicker: 10.5px;
+    --x-value: 30px;
+    --x-body: 12.5px;
+    --x-note: 11.5px;
+    --x-small: 11.5px;
+    --x-row: 13px;
+    --x-row-pad: 4px;
+    --x-bar: 12px;
+    --x-ring: 48px;
+  }
+
+  .exp-tile {
+    padding: 6px 9px 7px;
+  }
+
+  .inspector-card {
+    padding-bottom: 9px;
+  }
+  .inspector-row {
+    padding: 3px 0;
+  }
+}
+
+/* 720p projectors: one more step so the exposure panel still fits unscrolled. */
+@media (max-height: 740px) {
+  .left-dock {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .dock-header {
+    padding-bottom: 8px;
+  }
+  .dock-section {
+    padding-top: 8px;
+  }
+  .dock-layers .toggle-row {
+    padding: 4px 11px;
+  }
+  .weather-forecast {
+    padding-top: 4px;
+  }
+
+  .risk-panel {
+    --x-pad: 14px;
+    --x-gap: 8px;
+    --x-num: 28px;
+    --x-value: 28px;
+    --x-tile-num: 17px;
+    --x-body: 12px;
+    --x-note: 11px;
+    --x-small: 11px;
+    --x-row: 12.5px;
+    --x-row-pad: 3px;
+    --x-bar: 11px;
+    --x-ring: 42px;
+  }
+
+  .exp-tile {
+    padding: 5px 8px 6px;
+  }
+
+  .exp-foot {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  .surge-console {
+    left: var(--edge);
+    right: var(--edge);
+  }
+}
+
+/* Phones: stack the dock, the exposure panel and the wrapped console. */
 @media (max-width: 620px) {
+  :root {
+    --edge: 12px;
+  }
+
   .left-dock {
     top: 12px;
     left: 12px;
-    width: calc(100vw - 24px);
+    right: 12px;
+    width: auto;
+    max-height: 34%;
+    overflow-y: auto;
   }
 
   .weather-panel {
     display: none;
   }
 
-  .tool-widget-host {
+  .risk-panel {
+    --x-pad: 14px;
+    --x-gap: 10px;
+    --x-num: 28px;
+    --x-label: 13px;
+    --x-tile-num: 18px;
+    --x-tile-label: 11.5px;
+    --x-value: 28px;
+    --x-row: 13px;
+    --x-row-pad: 4px;
+    --x-bar: 12px;
+    --x-ring: 48px;
+    top: calc(34% + 22px);
+    bottom: 268px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: none;
+  }
+
+  .tool-widget-host,
+  body.exposure-open .tool-widget-host {
     top: 12px;
     right: 12px;
     width: calc(100vw - 24px);
@@ -1291,10 +2125,10 @@ body {
     justify-content: center;
     gap: 12px;
     padding: 13px 16px;
-    border-radius: var(--radius);
   }
 
   .console-intro {
+    display: flex;
     align-items: center;
     text-align: center;
     width: 100%;
@@ -1305,10 +2139,27 @@ body {
     width: 100%;
   }
 
-  .inspector-card {
+  .readout-note {
+    max-width: none;
+    text-align: center;
+  }
+
+  .rl-wide {
+    display: inline;
+  }
+
+  .rl-compact {
+    display: none;
+  }
+
+  .assumptions-panel {
+    top: 12px;
     left: 12px;
     right: 12px;
-    bottom: 12px;
     width: auto;
+    max-width: none;
+    max-height: calc(100% - 24px);
   }
+
+  /* Weather is hidden on phones, so the inspector simply opens under the title. */
 }

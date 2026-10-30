@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A local coastal digital-twin prototype combining reality capture, mapped port assets, and current weather to explore higher-water scenarios and illustrate asset exposure."
+    />
     <title>Badouzi Port Digital Twin</title>
 
     <!-- App font -->
@@ -29,8 +33,7 @@
       </div>
     </div>
 
-    <!-- Unified left dock: title + data layers + analysis, with the
-         Features-at-Risk drawer expanding beneath it when a surge is live -->
+    <!-- Left panel: title, live weather (or the inspector), data layers, tools -->
     <div class="left-dock">
       <aside class="dock-panel" aria-label="Port controls">
         <header class="dock-header">
@@ -41,6 +44,44 @@
           </span>
         </header>
 
+        <!-- Current weather context — Open-Meteo, populated by weather.js.
+             Context only: it does not drive the water scenario. -->
+        <section class="dock-section weather-panel" id="weatherPanel" aria-label="Current weather context from Open-Meteo">
+          <h2 class="dock-section-title">
+            Current Weather
+            <span class="weather-src pending" id="weatherStatus">Loading</span>
+          </h2>
+          <div class="weather-now">
+            <div class="weather-icon" id="weatherIcon"></div>
+            <div class="weather-temp">
+              <span class="weather-temp-val" id="weatherTemp">&mdash;</span>
+              <span class="weather-cond" id="weatherCond">Loading&hellip;</span>
+            </div>
+          </div>
+          <div class="weather-metrics">
+            <div class="wx-metric"><span class="wx-k">Feels</span><span class="wx-v" id="weatherFeels">&mdash;</span></div>
+            <div class="wx-metric"><span class="wx-k">Humidity</span><span class="wx-v" id="weatherHum">&mdash;</span></div>
+            <div class="wx-metric"><span class="wx-k">Wind</span><span class="wx-v" id="weatherWind">&mdash;</span></div>
+            <div class="wx-metric">
+              <span class="wx-k">Precip<span class="wx-k-sub" id="weatherPrecipLabel"></span></span>
+              <span class="wx-v" id="weatherPrecip">&mdash;</span>
+            </div>
+          </div>
+          <div class="weather-forecast" id="weatherForecast" aria-label="5-day forecast"></div>
+          <p class="weather-updated" id="weatherUpdated"></p>
+          <p class="weather-note" id="weatherNote">Context only &middot; not linked to the water scenario</p>
+        </section>
+
+        <!-- Click-to-inspect (Location Flood Check / asset details). Shown in
+             place of the weather section while open, so the scene stays clear. -->
+        <section id="inspectorCard" class="dock-section inspector-card" aria-live="polite" aria-labelledby="inspectorTitle">
+          <header class="dock-section-title inspector-header">
+            <h2 id="inspectorTitle" class="inspector-title">Feature</h2>
+            <button id="inspectorClose" class="inspector-close" type="button" aria-label="Close and show the weather">&#10005;</button>
+          </header>
+          <div id="inspectorBody" class="inspector-body"></div>
+        </section>
+
         <section class="dock-section" aria-label="Data layers">
           <h2 class="dock-section-title">Data Layers</h2>
           <div id="layerToggles" class="dock-layers">
@@ -48,120 +89,205 @@
           </div>
         </section>
 
-        <section class="dock-section" aria-label="Analysis tools">
+        <section class="dock-section" aria-label="View and analysis tools">
           <h2 class="dock-section-title">
-            Analysis
+            Tools
             <span class="card-tag">3D</span>
           </h2>
           <div class="tool-grid">
-            <button id="toolSlice" class="tool-btn" type="button">
-              <span class="tool-icon">&#9698;</span>
+            <button id="toolSlice" class="tool-btn" type="button" aria-pressed="false">
+              <span class="tool-icon" aria-hidden="true">&#9698;</span>
               <span class="tool-name">Slice</span>
             </button>
-            <button id="toolVolume" class="tool-btn" type="button">
-              <span class="tool-icon">&#9633;</span>
-              <span class="tool-name">Volume</span>
-            </button>
-            <button id="toolLine" class="tool-btn" type="button">
-              <span class="tool-icon">&#8674;</span>
+            <button id="toolLine" class="tool-btn" type="button" aria-pressed="false">
+              <span class="tool-icon" aria-hidden="true">&#8674;</span>
               <span class="tool-name">Distance</span>
             </button>
+            <button
+              id="homeBtn"
+              class="tool-btn"
+              type="button"
+              title="Return the camera to the initial harbor view (scenario and layers unchanged)"
+            >
+              <span class="tool-icon" aria-hidden="true">&#8962;</span>
+              <span class="tool-name">Home view</span>
+            </button>
             <button id="toolClear" class="tool-btn tool-clear" type="button">
-              <span class="tool-icon">&#10005;</span>
+              <span class="tool-icon" aria-hidden="true">&#10005;</span>
               <span class="tool-name">Clear</span>
             </button>
           </div>
         </section>
       </aside>
-
-      <!-- Features at risk — expands beneath the panel when a scenario is live -->
-      <section id="surgeImpact" class="risk-panel" aria-label="Features at risk">
-        <header class="card-head">
-          <h2 class="card-title">Features at Risk</h2>
-          <span class="card-sub">Collected by ArcGIS Field Maps</span>
-        </header>
-        <div class="impact-head">
-          <span class="impact-dot"></span>
-          <span id="impactCount" class="impact-count">0 features at risk</span>
-        </div>
-        <p id="impactDetail" class="impact-detail"></p>
-        <div class="value-at-risk">
-          <span class="value-label">Estimated Value At Risk</span>
-          <h2 id="valueAtRisk" class="value-amount">$0</h2>
-          <p class="value-disclaimer">Disclaimer: Impact estimates are derived from available GIS features and may not account for unmapped assets.</p>
-        </div>
-        <div id="impactArea" class="coverage">
-          <div class="coverage-track">
-            <div class="coverage-fill"></div>
-          </div>
-          <span class="coverage-text"></span>
-        </div>
-        <div class="depth-legend" aria-label="Water depth severity scale">
-          <span class="depth-key"><span class="depth-swatch" style="--c:#FFA500"></span>&lt; 1.5 m</span>
-          <span class="depth-key"><span class="depth-swatch" style="--c:#FF0000"></span>&ge; 1.5 m</span>
-        </div>
-      </section>
     </div>
+
+    <!-- Asset exposure — a full-height presentation panel on the right that
+         opens when a what-if scenario is live. Figures come from main.js. -->
+    <section id="surgeImpact" class="risk-panel" aria-label="Asset exposure" aria-hidden="true">
+      <header class="exp-head">
+        <div class="exp-head-row">
+          <h2 class="exp-title">Asset Exposure</h2>
+          <span id="analysisChip" class="status-chip status-reference" role="status"></span>
+        </div>
+        <p id="exposureScenario" class="exp-scenario"></p>
+      </header>
+
+      <div id="analysisStatus" class="analysis-status" role="alert" hidden>
+        <p id="analysisStatusText"></p>
+        <button id="analysisRetry" class="mini-btn" type="button">Retry</button>
+      </div>
+
+      <div class="exp-count">
+        <span id="impactCountNum" class="exp-count-num">&mdash;</span>
+        <span id="impactCountLabel" class="exp-count-label">exposed mapped assets</span>
+      </div>
+      <div id="impactTiles" class="exp-tiles"></div>
+      <p id="impactNote" class="exp-small" hidden></p>
+
+      <div class="exp-value">
+        <span class="kicker">Illustrative exposed value &middot; USD</span>
+        <p id="valueAtRisk" class="exp-value-num">&mdash;</p>
+        <p id="valueSubtotal" class="value-subtotal" hidden></p>
+        <p class="exp-note">
+          Assumed replacement values for mapped assets only. Not a forecast of repair costs or economic losses.
+        </p>
+      </div>
+
+      <!-- Scenario comparison — filled by main.js from the same inventory as
+           the figures above. Bars: exposed value by asset type. Rings: share
+           of sampled dry land at or below each water level. -->
+      <section class="compare" aria-labelledby="compareTitle">
+        <h3 id="compareTitle" class="kicker">Compare scenarios</h3>
+
+        <p class="cmp-sub">Illustrative exposed value &middot; USD</p>
+        <div id="compareBars" class="cmp-bars" role="group" aria-label="Illustrative exposed value by scenario"></div>
+        <div class="cmp-legend" aria-hidden="true">
+          <span class="cmp-key is-bollards">Bollards</span>
+          <span class="cmp-key is-streetlights">Streetlights</span>
+          <span class="cmp-key is-bim">BIM models</span>
+        </div>
+
+        <p class="cmp-sub">Sampled dry land at or below the water level</p>
+        <div id="compareLand" class="cmp-land" role="group" aria-label="Sampled dry land at or below each water level"></div>
+        <p id="compareLandNote" class="cmp-note" hidden></p>
+
+        <!-- Shared water gradient for the land rings -->
+        <svg class="cmp-defs" width="0" height="0" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="waterGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7cc4ff" />
+              <stop offset="100%" stop-color="#2f6bff" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </section>
+
+      <footer class="exp-foot">
+        <div class="depth-legend" aria-label="Marker color: modeled water depth at the asset">
+          <span class="depth-legend-title">Modeled depth</span>
+          <span class="depth-key"><span class="depth-swatch" style="--c:#FFA500"></span><span id="depthShallowLabel">&lt; 1.5 m</span></span>
+          <span class="depth-key"><span class="depth-swatch" style="--c:#FF0000"></span><span id="depthDeepLabel">&ge; 1.5 m</span></span>
+        </div>
+        <button
+          id="assumptionsBtn"
+          class="link-btn"
+          type="button"
+          aria-expanded="false"
+          aria-controls="assumptionsPanel"
+        >
+          Assumptions &amp; method
+        </button>
+        <p class="exp-credit">Bollards &amp; streetlights collected with ArcGIS Field Maps</p>
+      </footer>
+      <button id="moreHint" class="more-hint" type="button" tabindex="-1" aria-hidden="true" hidden>More &#9662;</button>
+    </section>
+
+    <!-- Assumptions & method — opened from the exposure panel -->
+    <section
+      id="assumptionsPanel"
+      class="assumptions-panel"
+      role="dialog"
+      aria-labelledby="assumptionsTitle"
+      tabindex="-1"
+      hidden
+    >
+      <header class="assumptions-head">
+        <h2 id="assumptionsTitle" class="assumptions-title">Assumptions &amp; method</h2>
+        <button id="assumptionsClose" class="inspector-close" type="button" aria-label="Close assumptions">&#10005;</button>
+      </header>
+      <div class="assumptions-body">
+        <p class="assumptions-lede">
+          A local coastal digital-twin prototype combining reality capture, mapped port assets, and current
+          weather to explore higher-water scenarios and illustrate asset exposure.
+        </p>
+        <h3>Scenarios</h3>
+        <p>
+          Illustrative what-if water scenarios, not a calibrated tidal or flood forecast. Sky, cloud and rain
+          effects are scenario illustrations: they are not driven by the weather panel, and the weather feed
+          does not set the water level or the analysis.
+        </p>
+        <h3>Assessed inventory</h3>
+        <p id="assumeInventory"></p>
+        <p>
+          Buildings and other assets visible only in the reality capture (Gaussian splat) are not discrete
+          inventory records and are not included.
+        </p>
+        <h3>Assumed replacement values (USD)</h3>
+        <ul id="assumeValues" class="assumptions-values"></ul>
+        <p>
+          Every BIM model uses the same assumed value, irrespective of size or use. Amounts cover the assessed
+          inventory only &mdash; this is not a depth&ndash;damage, repair-cost or economic-loss calculation.
+          If a dataset, elevation or valuation is missing, the total is withheld rather than shown as complete.
+        </p>
+        <h3>Method</h3>
+        <p>
+          Each asset's ground elevation is sampled from the scene's terrain elevation service and compared with a
+          flat what-if water surface; assets at or below the surface count as exposed. Each BIM model is tested at
+          one representative point (the center of its extent), not a footprint or floor level. Flow paths,
+          drainage, seawall overtopping, waves, velocity and duration are not modeled, and the visual detail of
+          the reality capture does not make this comparison more precise.
+        </p>
+        <h3>Land-sample estimate</h3>
+        <p>
+          Share of a <span id="assumeGrid">60 &times; 60</span> grid of terrain samples within the reality-mesh
+          extent that lies above the Normal reference surface but at or below the scenario surface. A sampling
+          estimate, not an inundation boundary; samples without elevation data are excluded.
+        </p>
+        <h3>Marker colors</h3>
+        <p>
+          Modeled water depth at the asset: orange below <span class="assume-depth">1.5 m</span>, red at or above
+          <span class="assume-depth">1.5 m</span>. Not a damage category or probability.
+        </p>
+      </div>
+    </section>
 
     <!-- ArcGIS Slice / Measurement widget host (top-right) -->
     <div id="toolContainer" class="tool-widget-host"></div>
 
-    <!-- Live local weather (top-right) — Open-Meteo, populated by weather.js -->
-    <section class="weather-panel" id="weatherPanel" aria-label="Local weather conditions">
-      <header class="weather-head">
-        <div class="weather-loc">
-          <span class="weather-title">Local Weather</span>
-          <span class="weather-place">Badouzi &middot; Keelung</span>
-        </div>
-        <span class="weather-src" id="weatherStatus">Live</span>
-      </header>
-      <div class="weather-now">
-        <div class="weather-icon" id="weatherIcon"></div>
-        <div class="weather-temp">
-          <span class="weather-temp-val" id="weatherTemp">&mdash;</span>
-          <span class="weather-cond" id="weatherCond">Loading&hellip;</span>
-        </div>
-      </div>
-      <div class="weather-metrics">
-        <div class="wx-metric"><span class="wx-k">Feels</span><span class="wx-v" id="weatherFeels">&mdash;</span></div>
-        <div class="wx-metric"><span class="wx-k">Humidity</span><span class="wx-v" id="weatherHum">&mdash;</span></div>
-        <div class="wx-metric"><span class="wx-k">Wind</span><span class="wx-v" id="weatherWind">&mdash;</span></div>
-        <div class="wx-metric"><span class="wx-k">Rain</span><span class="wx-v" id="weatherPrecip">&mdash;</span></div>
-      </div>
-      <div class="weather-forecast" id="weatherForecast" aria-label="5-day forecast"></div>
-      <p class="weather-updated" id="weatherUpdated"></p>
-    </section>
-
-    <!-- Storm-surge tidal console — docked bottom-centre -->
-    <section class="surge-console" aria-label="Sea level and storm surge simulator">
+    <!-- What-if water-level console — docked bottom-centre -->
+    <section class="surge-console" aria-label="What-if water-level scenarios">
       <div class="console-intro">
-        <span class="console-eyebrow">Sea Level &middot; Storm Surge</span>
-        <span class="console-title">Tidal Scenario</span>
+        <span class="console-eyebrow">What-if &middot; not a forecast</span>
+        <span class="console-title">Water Level</span>
       </div>
-      <div id="surgeControl" class="surge-scrubber">
+      <div id="surgeControl" class="surge-scrubber" role="group" aria-label="Water-level scenario">
         <!-- Scenario stops injected by main.js -->
       </div>
       <div class="console-readout">
-        <span class="readout-label">Scenario</span>
+        <span class="readout-label"
+          ><span class="rl-wide">Scenario</span><span class="rl-compact">What-if &middot; not a forecast</span></span
+        >
         <span id="surgeReadout" class="readout-value">Normal Conditions</span>
+        <span id="surgeNote" class="readout-note">Reference view &mdash; exposure not assessed</span>
       </div>
-      <div class="console-rain" hidden>
+      <div class="console-rain" title="Illustrative scenario effect, not live weather" hidden>
         <span class="console-rain-label">Rain</span>
         <label class="switch">
-          <input type="checkbox" id="rainToggle" />
+          <input type="checkbox" id="rainToggle" aria-label="Illustrative rain effect" />
           <span class="slider"></span>
         </label>
       </div>
     </section>
-
-    <!-- Click-to-inspect asset card (bottom-right) -->
-    <div id="inspectorCard" class="inspector-card">
-      <header class="inspector-header">
-        <h3 id="inspectorTitle" class="inspector-title">Feature</h3>
-        <button id="inspectorClose" class="inspector-close" type="button" aria-label="Close">&#10005;</button>
-      </header>
-      <div id="inspectorBody" class="inspector-body"></div>
-    </div>
 
     <!-- Powered by Esri attribution badge (bottom-left) -->
     <a
