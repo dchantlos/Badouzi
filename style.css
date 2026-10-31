@@ -17,6 +17,9 @@
   --text-dim: #c2cfee;
   --text-faint: #aab6d4;
   --label: #d1d5db;                    /* crisp light gray for kickers */
+  --esri-blue: #0079c1;
+  --dev-blue: #2e9bd6;
+  --dev-blue-hover: #46b4ec;
   --accent: #38e2ea;                   /* neon cyan */
   --accent-bright: #48dfe5;
   --accent-2: #7c5cff;                 /* violet */
@@ -30,6 +33,12 @@
   --coral-glow: rgba(251, 113, 133, 0.45);
   --amber: #fbbf24;                    /* partial / incomplete results */
   --danger: #fb7185;
+  --encounter-amber: #ffc36a;
+  --encounter-amber-rgb: 255, 195, 106;
+  --encounter-teal: #42d9c8;
+  --encounter-teal-rgb: 66, 217, 200;
+  --encounter-red: #ff4d5e;
+  --encounter-red-rgb: 255, 77, 94;
   --radius: 18px;
   --radius-sm: 12px;
   --radius-pill: 999px;
@@ -86,6 +95,7 @@ body {
    Shared dark glass surface for every floating panel
    ------------------------------------------------------------ */
 .dock-panel,
+.inspector-card.is-expanded,
 .risk-panel,
 .surge-console,
 .assumptions-panel,
@@ -242,24 +252,6 @@ body {
   animation: floatIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
 }
 
-.scene-secret {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 120;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: default;
-}
-
-.scene-secret:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: -2px;
-}
-
 .dock-header {
   display: flex;
   align-items: center;
@@ -284,37 +276,98 @@ body {
   color: var(--label);
 }
 
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 46%),
-    linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 16px var(--accent-glow), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
-
-.brand-text {
+.brand__logo-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+.brand__logo {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.brand__glow {
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  border-radius: 13px;
+  background: var(--esri-blue);
+  filter: blur(15px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.brand:hover .brand__logo,
+.brand:focus-visible .brand__logo {
+  transform: scale(1.07);
+}
+.brand:hover .brand__glow,
+.brand:focus-visible .brand__glow {
+  opacity: 0.6;
+}
+.brand:focus-visible {
+  outline: 2px solid var(--dev-blue-hover);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+.brand__text {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
   line-height: 1.15;
 }
-
-.brand-title {
+.brand__badge {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.005em;
+  color: #e6ecff;
+}
+.brand__accent {
+  font-weight: 700;
+  color: var(--dev-blue);
+  transition: color 0.3s ease;
+}
+.brand:hover .brand__accent {
+  color: var(--dev-blue-hover);
+}
+.brand__title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.25;
   color: var(--text);
 }
-
-.brand-sub {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.brand__location {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand__logo,
+  .brand__glow,
+  .brand__accent {
+    transition: none;
+  }
+  .brand:hover .brand__logo,
+  .brand:focus-visible .brand__logo {
+    transform: none;
+  }
 }
 
 /* Small cyan badge, e.g. "3D" beside the Tools heading */
@@ -431,7 +484,7 @@ body {
 }
 
 /* ------------------------------------------------------------
-   Tool buttons (Slice / Distance / Home view / Clear)
+   Tool buttons (Slice / Distance / Line of sight / Home view / Clear)
    ------------------------------------------------------------ */
 .tool-grid {
   display: grid;
@@ -477,6 +530,18 @@ body {
   font-size: 15px;
   line-height: 1;
   color: var(--accent);
+}
+
+.tool-sight {
+  grid-column: 1 / -1;
+}
+.tool-sight svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
 }
 
 .tool-btn.active {
@@ -662,6 +727,26 @@ body {
   color: var(--text-dim);
 }
 
+.tool-godzilla {
+  grid-column: 1 / -1;
+}
+
+.tool-godzilla svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.tool-godzilla[aria-expanded="true"] {
+  background: rgba(56, 226, 234, 0.18);
+  border-color: var(--accent);
+}
+
+.tool-godzilla:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 /* =============================================================================
    Powered by Esri attribution badge (bottom-left)
    ============================================================================= */
@@ -698,7 +783,7 @@ body {
   font-weight: 700;
 }
 
-/* Slice / Distance widgets: top-right, left of the exposure column when open */
+/* Analysis controls: top-right, left of the exposure column when open */
 .tool-widget-host {
   position: absolute;
   top: var(--edge);
@@ -727,6 +812,93 @@ body.exposure-open .tool-widget-host {
   -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
   box-shadow: var(--shadow);
   overflow: hidden;
+}
+
+.tool-widget-host:has(.line-of-sight-panel) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 110;
+}
+.line-of-sight-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  backdrop-filter: blur(var(--blur));
+  box-shadow: var(--shadow);
+}
+.sight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--glass-border-soft);
+}
+.sight-header h2 {
+  font-size: 17px;
+}
+.sight-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+.sight-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.sight-body {
+  min-height: 0;
+  padding: 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+.sight-status,
+.sight-summary {
+  margin-bottom: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.sight-summary {
+  font-weight: 600;
+}
+.line-of-sight-panel[data-state="error"] .sight-status {
+  color: var(--coral);
+}
+.sight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 14px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.sight-visible {
+  color: var(--mint);
+}
+.sight-blocked {
+  color: var(--coral);
+}
+.sight-note {
+  margin-top: 12px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.line-of-sight-panel .tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* =============================================================================
@@ -1768,9 +1940,15 @@ body.inspecting .weather-panel {
   color: var(--accent-bright);
 }
 
-.inspector-close {
+.inspector-header-controls {
+  display: flex;
   flex: none;
+  gap: 6px;
   margin-left: auto;
+}
+
+.inspector-control {
+  flex: none;
   width: 26px;
   height: 26px;
   border-radius: 8px;
@@ -1783,15 +1961,34 @@ body.inspecting .weather-panel {
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
-.inspector-close:hover {
+.inspector-control:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(56, 226, 234, 0.12);
 }
 
-.inspector-close:focus-visible {
+.inspector-control:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.inspector-control svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+.restore-icon {
+  display: none;
+}
+.inspector-card.is-expanded .expand-icon {
+  display: none;
+}
+.inspector-card.is-expanded .restore-icon {
+  display: inline;
 }
 
 .inspector-row {
@@ -1855,6 +2052,138 @@ body.inspecting .weather-panel {
 .inspector-action:hover {
   background: rgba(56, 226, 234, 0.2);
   box-shadow: 0 0 18px -4px var(--accent);
+}
+
+.field-assets-row .toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.field-assets-row small {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.field-assets-row.unavailable {
+  opacity: 0.55;
+}
+.field-assets-status {
+  margin: 8px 2px 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.field-assets-status[data-error="true"] {
+  color: var(--coral);
+}
+.field-assets-retry {
+  margin-top: 5px;
+  border: 0;
+  padding: 4px 2px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.inspector-card.visible.is-expanded {
+  position: fixed;
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  width: min(720px, calc(100vw - 32px));
+  padding: 0;
+  background: var(--glass-bg-strong);
+  animation: none;
+}
+.inspector-card.is-expanded .inspector-header {
+  flex: none;
+  padding: 18px 24px;
+  margin: 0;
+  border-bottom: 1px solid var(--glass-border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.inspector-card.is-dragging .inspector-header {
+  cursor: grabbing;
+}
+.inspector-card.is-expanded .inspector-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+.inspector-card.is-expanded .inspector-title {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  color: var(--text);
+}
+.inspector-card.is-expanded .inspector-control {
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}
+.inspector-card.is-expanded .inspector-control svg {
+  width: 22px;
+  height: 22px;
+}
+.inspector-card.is-expanded .inspector-body {
+  min-height: 0;
+  padding: 8px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+.inspector-card.is-expanded .inspector-row {
+  gap: 24px;
+  padding: 12px 0;
+}
+.inspector-card.is-expanded .inspector-label {
+  max-width: 43%;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.inspector-card.is-expanded .inspector-value {
+  font-size: 24px;
+  line-height: 1.4;
+}
+.inspector-card.is-expanded .inspector-row--note .inspector-value {
+  font-size: 16px;
+  font-weight: 500;
+}
+.inspector-card.is-expanded .inspector-action {
+  margin-top: 14px;
+  padding: 14px;
+  font-size: 18px;
+}
+@media (max-width: 620px) {
+  .inspector-card.is-expanded .inspector-header {
+    padding: 14px 16px;
+  }
+  .inspector-card.is-expanded .inspector-title {
+    font-size: 24px;
+  }
+  .inspector-card.is-expanded .inspector-body {
+    padding: 6px 16px 16px;
+  }
+  .inspector-card.is-expanded .inspector-row {
+    display: block;
+    padding: 10px 0;
+  }
+  .inspector-card.is-expanded .inspector-label {
+    display: block;
+    max-width: none;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .inspector-card.is-expanded .inspector-value {
+    display: block;
+    font-size: 20px;
+    text-align: left;
+  }
 }
 
 /* ------------------------------------------------------------

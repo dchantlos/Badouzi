@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import Accessor from "@arcgis/core/core/Accessor.js";
-import { isSceneReady, waitForSceneReady } from "./scene-ready.js";
+import { isSceneReady, observeSceneReadiness, waitForSceneReady } from "./scene-ready.js";
 
 const ViewState = Accessor.createSubclass({
   properties: {
@@ -138,4 +138,85 @@ test("rendering failures are surfaced explicitly", async t => {
   const wait = assert.rejects(waitForSceneReady(view, model), /Scene rendering failed: Context lost/);
   view.fatalError = new Error("Context lost");
   await wait;
+});
+
+test("a prepared encounter can await the user's confirmation without timing out", t => {
+  const { view, model } = setup(t);
+  const changes = [];
+  const observer = observeSceneReadiness(view, model, {
+    onChange: ready => changes.push(ready),
+    onError: error => assert.fail(error.message)
+  });
+  t.after(() => observer.remove());
+  t.mock.timers.tick(2000);
+  assert.equal(observer.ready, true);
+  t.mock.timers.tick(180000);
+  assert.equal(observer.ready, true);
+  assert.deepEqual(changes, [true]);
+});
+
+test("new loading disables Proceed and requires a fresh two-second stable interval", t => {
+  const { view, model } = setup(t);
+  const changes = [];
+  const observer = observeSceneReadiness(view, model, {
+    onChange: ready => changes.push(ready),
+    onError: error => assert.fail(error.message)
+  });
+  t.after(() => observer.remove());
+  t.mock.timers.tick(2000);
+  view.updating = true;
+  assert.equal(observer.ready, false);
+  view.updating = false;
+  t.mock.timers.tick(1999);
+  assert.equal(observer.ready, false);
+  t.mock.timers.tick(1);
+  assert.equal(observer.ready, true);
+  assert.deepEqual(changes, [true, false, true]);
+});
+
+test("lighting changes revoke readiness even before tile loading starts", t => {
+  const { view, model } = setup(t);
+  const observer = observeSceneReadiness(view, model, {
+    onChange() {},
+    onError: error => assert.fail(error.message)
+  });
+  t.after(() => observer.remove());
+  t.mock.timers.tick(2000);
+  view.environment = { lighting: { date: new Date(5000) } };
+  assert.equal(observer.ready, false);
+  t.mock.timers.tick(2000);
+  assert.equal(observer.ready, true);
+});
+
+test("a later loading stall has its own timeout, not an expired confirmation deadline", t => {
+  const { view, model } = setup(t);
+  const errors = [];
+  const observer = observeSceneReadiness(view, model, { onChange() {}, onError: error => errors.push(error) });
+  t.mock.timers.tick(2000);
+  t.mock.timers.tick(120000);
+  view.updating = true;
+  t.mock.timers.tick(59999);
+  assert.equal(errors.length, 0);
+  t.mock.timers.tick(1);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /scene is still loading/);
+  assert.equal(observer.ready, false);
+});
+
+test("cancelling while awaiting Proceed prevents any later readiness or timeout callbacks", t => {
+  const { view, model } = setup(t);
+  const controller = new AbortController();
+  const changes = [], errors = [];
+  const observer = observeSceneReadiness(view, model, {
+    signal: controller.signal, onChange: ready => changes.push(ready), onError: error => errors.push(error)
+  });
+  t.mock.timers.tick(2000);
+  controller.abort();
+  view.updating = true;
+  view.updating = false;
+  t.mock.timers.tick(120000);
+  assert.equal(observer.ready, false);
+  assert.deepEqual(changes, [true]);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].name, "AbortError");
 });

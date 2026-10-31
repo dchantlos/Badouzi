@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { AnimationClip, AnimationMixer, Bone, Group, Object3D, QuaternionKeyframeTrack, Vector3 } from "three";
-import { HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
+import { EYE_BONES, HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
 import { sampleReveal } from "./timeline.js";
 
 const bytes = readFileSync(new URL("./godzilla-walk.glb", import.meta.url));
@@ -37,6 +37,23 @@ test("the actual supplied rig contains the complete neck/skull/jaw chain", () =>
   assert.doesNotThrow(() => createHeadMotion(model));
 });
 
+test("the two actual eye joints follow the animated head without collapsing into one observer", () => {
+  const model = rig();
+  const motion = createHeadMotion(model);
+  const left = model.getObjectByName(EYE_BONES.left);
+  const right = model.getObjectByName(EYE_BONES.right);
+  assert(left.isBone && right.isBone);
+  motion.apply(sample(44));
+  model.updateMatrixWorld(true);
+  const first = left.getWorldPosition(new Vector3());
+  const separation = first.distanceTo(right.getWorldPosition(new Vector3()));
+  assert(separation > 2);
+  motion.apply(sample(49));
+  model.updateMatrixWorld(true);
+  assert(left.getWorldPosition(new Vector3()).distanceTo(first) > 0.5);
+  assert(Math.abs(left.getWorldPosition(new Vector3()).distanceTo(right.getWorldPosition(new Vector3())) - separation) < 1e-5);
+});
+
 test("head offsets stay inactive until the head is emerging", () => {
   for (const rise of [0, 0.1, 0.15]) {
     const pose = sampleHeadMotion({ seconds: 15, rise, approach: 0 });
@@ -58,21 +75,22 @@ test("neck motion leads the skull rather than rotating the whole head as one blo
 
 test("dramatic head and jaw movement remains bounded and smoothly weighted", () => {
   let previous = sample(0);
-  for (let frame = 1; frame <= 70 * 60; frame++) {
+  for (let frame = 1; frame <= 110 * 60; frame++) {
     const pose = sample(frame / 60);
-    assert(Math.abs(total(pose, "pitch")) < 14 * Math.PI / 180);
-    assert(Math.abs(total(pose, "yaw")) < 12 * Math.PI / 180);
-    assert(Math.abs(total(pose, "roll")) < 2 * Math.PI / 180);
-    assert(pose.jaw.pitch > -4 * Math.PI / 180 && pose.jaw.pitch < 14 * Math.PI / 180);
+    assert(Math.abs(total(pose, "pitch")) < 23 * Math.PI / 180);
+    assert(Math.abs(total(pose, "yaw")) < 24 * Math.PI / 180);
+    assert(Math.abs(total(pose, "roll")) < 3 * Math.PI / 180);
+    assert(pose.jaw.pitch > -4 * Math.PI / 180 && pose.jaw.pitch < 25 * Math.PI / 180);
     for (const axis of ["pitch", "yaw", "roll"]) {
       const speed = Math.abs(total(pose, axis) - total(previous, axis)) * 60;
-      assert(speed < 12 * Math.PI / 180, `${axis} moved too quickly at ${frame / 60}`);
+      assert(speed < 25 * Math.PI / 180, `${axis} moved too quickly at ${frame / 60}`);
     }
+    assert(Math.abs(pose.jaw.pitch - previous.jaw.pitch) * 60 < 25 * Math.PI / 180);
     previous = pose;
   }
 });
 
-test("the real jaw visibly opens for the charge, then relaxes instead of flapping", () => {
+test("the real jaw opens for the charge and closes again before the idle sequence", () => {
   const model = rig();
   const motion = createHeadMotion(model);
   const upper = model.getObjectByName("bip_lipT_1_l_101");
@@ -108,17 +126,42 @@ test("actual nose movement leaves all non-head bones, hands and feet unchanged",
   for (const { bone, matrix } of untouched) assert.deepEqual(bone.matrixWorld.elements, matrix);
 });
 
-test("gentle head motion continues after the body sequence ends", () => {
+test("walking includes broad head turns, chin lifts and repeated jaw openings", () => {
+  const poses = Array.from({ length: 241 }, (_, index) => sample(19 + index / 10));
+  const range = values => (Math.max(...values) - Math.min(...values)) * 180 / Math.PI;
+  assert(range(poses.map(pose => total(pose, "yaw"))) > 28);
+  assert(range(poses.map(pose => total(pose, "pitch"))) > 20);
+  assert(range(poses.map(pose => pose.jaw.pitch)) > 18);
+  assert(sample(31).jaw.pitch > sample(24).jaw.pitch + 10 * Math.PI / 180);
+  assert(sample(39).jaw.pitch > sample(35).jaw.pitch + 5 * Math.PI / 180);
+});
+
+test("the post-walk loop visibly moves the actual nose and jaw without moving the body", () => {
   const model = rig();
   const motion = createHeadMotion(model);
   const nose = model.getObjectByName("bip_noseT_l_62");
-  motion.apply(sample(46));
-  model.updateMatrixWorld(true);
-  const first = nose.getWorldPosition(new Vector3());
-  motion.apply(sample(49));
-  model.updateMatrixWorld(true);
-  assert(nose.getWorldPosition(new Vector3()).distanceTo(first) > 0.03);
+  const upper = model.getObjectByName("bip_lipT_1_l_101");
+  const lower = model.getObjectByName("bip_lipB_1_l_68");
+  const points = [], gaps = [];
+  for (let time = 44; time <= 60; time += 0.25) {
+    motion.apply(sample(time));
+    model.updateMatrixWorld(true);
+    points.push(nose.getWorldPosition(new Vector3()));
+    gaps.push(upper.getWorldPosition(new Vector3()).distanceTo(lower.getWorldPosition(new Vector3())));
+  }
+  assert(Math.max(...points.map(point => point.distanceTo(points[0]))) > 2);
+  assert(Math.max(...gaps) - Math.min(...gaps) > 2);
   assert.deepEqual(sampleReveal(46), sampleReveal(49));
+});
+
+test("the complete idle pose repeats every sixteen seconds, not just its jaw", () => {
+  for (let time = 44; time <= 60; time += 0.1) {
+    const first = sample(time);
+    const next = sample(time + 16);
+    for (const joint of Object.keys(first)) for (const axis of ["pitch", "yaw", "roll"]) {
+      assert(Math.abs(first[joint][axis] - next[joint][axis]) < 1e-8, `${joint}.${axis} does not loop`);
+    }
+  }
 });
 
 test("unchanged mixer tracks cannot accumulate neck or jaw rotations", () => {

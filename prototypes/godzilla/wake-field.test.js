@@ -112,3 +112,18 @@ test("invalid clocks and source geometry surface errors", () => {
   field.update(5, source);
   assert.throws(() => field.update(4, source), RangeError);
 });
+
+test("GPU snapshots cannot mutate the native field or change after later updates", () => {
+  const field = createWakeField();
+  field.update(1, source);
+  const first = field.snapshot();
+  const before = structuredClone(first);
+  field.update(2.2, { ...source, y: 20 });
+  assert.deepEqual(first, before);
+  const current = field.snapshot();
+  const expected = structuredClone(current);
+  current.source.x = 1000;
+  current.packets[0].power = 0;
+  current.packets.push({ ...current.packets[0] });
+  assert.deepEqual(field.snapshot(), expected);
+});

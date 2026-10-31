@@ -159,6 +159,13 @@ export function createWakeField() {
   }
   return {
     update, sample, reset,
+    snapshot() {
+      return {
+        time,
+        source: source && { ...source },
+        packets: packets.map(packet => ({ ...packet }))
+      };
+    },
     get active() { return packets.length > 0 || (source?.power ?? 0) > 0.001; },
     get packetCount() { return packets.length; }
   };

@@ -1,12 +1,12 @@
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils.js";
 import Camera from "@arcgis/core/Camera.js";
-import { CAMERA_START, CAMERA_END, DURATION_S, RISE_END_S, sampleReveal } from "./timeline.js";
+import { CAMERA_START, DURATION_S, sampleReveal } from "./timeline.js";
 import { sampleCinematicCamera } from "./cinematic-camera.js";
-import { waitForSceneReady } from "./scene-ready.js";
+import { createGodzillaDialogs } from "./dialogs.js";
 import "./preview.css";
 
 export function setupGodzilla({
-  view, getScenario, closeInspector, tools, isManualNavigationActive, onClose
+  view, getScenario, closeInspector, tools, isManualNavigationActive, getSightTargets, prepareSightView, onClose
 }) {
   const panel = document.createElement("section");
   panel.className = "dock-section godzilla-preview";
@@ -16,37 +16,40 @@ export function setupGodzilla({
     <h2 class="dock-section-title">Godzilla
       <button class="godzilla-close" id="godzillaClose" type="button" aria-label="Hide Godzilla controls">&times;</button>
     </h2>
-    <label class="godzilla-mode" for="godzillaMode">Sequence
-      <select id="godzillaMode">
-        <option value="reveal">Cinematic rise</option>
-        <option value="walk">Slow wade</option>
-      </select>
-    </label>
-    <label class="godzilla-wake-option">
-      <input id="godzillaWake" type="checkbox" title="Enable before Play; reset to compare without it.">
-      Water wake (preview)
-    </label>
     <p class="godzilla-wake-status" role="status" hidden></p>
     <p class="godzilla-status" role="status">Select +3m, then press G to reveal.</p>
     <div class="tool-grid">
-      <button class="tool-btn" id="godzillaPlay" type="button">Play (G)</button>
-      <button class="tool-btn" id="godzillaReset" type="button">Reset (Esc)</button>
+      <button class="tool-btn godzilla-action-button" id="godzillaPlay" type="button"
+        aria-label="Play Godzilla" aria-keyshortcuts="G" title="Play (G)">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M8 5v14l11-7Z"/>
+        </svg>
+      </button>
+      <button class="tool-btn godzilla-action-button" id="godzillaReset" type="button"
+        aria-label="Reset Godzilla" aria-keyshortcuts="Escape" title="Reset (Esc)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M3 11a9 9 0 1 1 2.4 7.2M3 4v7h7"/>
+        </svg>
+      </button>
     </div>
-    <p class="godzilla-credit">
-      V flies freely without stopping the creature.<br>
-      Fictional effect; excluded from analysis.<br>
-      Model: <a href="https://sketchfab.com/Draco120" target="_blank" rel="noopener noreferrer">Draco</a>,
-      <a href="https://sketchfab.com/3d-models/godzilla-minus-one-godzillasaurus-b1f63bb4b5c64ad1b8988f0ca48e3138" target="_blank" rel="noopener noreferrer">Godzillasaurus</a>,
-      <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.
-      Adapted materials, animation and glow.
-    </p>`;
+    <button class="tool-btn godzilla-sight-button" id="godzillaSight" type="button"
+      aria-pressed="false" title="Available after Godzilla finishes walking" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span>Godzilla Sight Lines</span>
+    </button>
+    <p class="godzilla-sight-status" role="status" hidden></p>
+    <button class="godzilla-credits-link" type="button" aria-haspopup="dialog" aria-controls="godzillaCredits">Credits</button>`;
   document.querySelector(".dock-panel").append(panel);
   const play = panel.querySelector("#godzillaPlay");
   const reset = panel.querySelector("#godzillaReset");
   const status = panel.querySelector(".godzilla-status");
-  const variant = panel.querySelector("#godzillaMode");
-  const wakeToggle = panel.querySelector("#godzillaWake");
   const wakeStatus = panel.querySelector(".godzilla-wake-status");
+  const sightButton = panel.querySelector("#godzillaSight");
+  const sightStatus = panel.querySelector(".godzilla-sight-status");
   let monster;
   let loading;
   let wake;
@@ -59,42 +62,59 @@ export function setupGodzilla({
   let disposed = false;
   let time = 0;
   let readinessController;
+  let eyeSight;
+  let eyeLoading = false;
+  let eyeRequest = 0;
+  let eyeController;
+  let sightCameraRequested = false;
+  const dialogs = createGodzillaDialogs({ onCancel: () => stop(), onRetry: () => start(), onStatus: say });
 
   function say(message, error = false) {
+    status.hidden = !message;
     status.textContent = message;
     panel.dataset.error = String(error);
   }
   function buttons() {
     play.disabled = getScenario() !== "+3m" || active;
     reset.disabled = !active;
-    variant.disabled = active;
-    wakeToggle.disabled = active || !!wakeLoading;
+    sightButton.disabled = !active || time < DURATION_S;
+    sightButton.setAttribute("aria-pressed", String(!!eyeSight || eyeLoading));
+    sightButton.classList.toggle("active", !!eyeSight || eyeLoading);
+    sightButton.setAttribute("aria-busy", String(eyeLoading));
+    sightButton.title = !active || time < DURATION_S ? "Available after Godzilla finishes walking"
+      : eyeLoading ? "Cancel harbour sight-line preparation"
+        : eyeSight ? `Hide sight lines to ${eyeSight.targets.map(site => site.name).join(", ")}`
+        : "Show eight eye-to-harbour sight lines from the closer rear-oblique view";
   }
   function wakeMessage(message, error = false) {
     wakeStatus.hidden = !message;
     wakeStatus.textContent = message;
     wakeStatus.dataset.error = String(error);
+    dialogs.setWarning(error ? message : "");
   }
   function failWake(error) {
-    console.warn("[Badouzi Digital Twin] Water wake study:", error);
+    console.warn("[Badouzi Digital Twin] Water wake:", error);
     wake?.dispose();
     wake = null;
-    wakeToggle.checked = false;
-    wakeMessage(`Wake unavailable: ${error.message}. ArcGIS water is unchanged.`, true);
+    wakeMessage(`Wake unavailable: ${error.message}. Original scene water remains. Reset and Play to retry.`, true);
     buttons();
   }
   function loadWake() {
     if (wake) return Promise.resolve(wake);
-    wakeMessage("Preparing the wake preview...");
-    wakeLoading ??= import("./water-wake.js")
-      .then(({ createWaterWake }) => createWaterWake(view))
+    wakeMessage("");
+    wakeLoading ??= import("./three-water-wake.js")
+      .then(({ createThreeWaterWake }) => createThreeWaterWake(view, {
+        onError(error) {
+          if (!disposed) failWake(error);
+        }
+      }))
       .then(loaded => {
         if (disposed) {
           loaded.dispose();
           return null;
         }
         wake = loaded;
-        wakeMessage("Wake preview ready. Reset to change this setting.");
+        wakeMessage("");
         return wake;
       })
       .finally(() => {
@@ -122,11 +142,13 @@ export function setupGodzilla({
   }
   function fail(error) {
     console.warn("[Badouzi Digital Twin] Godzilla:", error);
+    const preparing = dialogs.encounterOpen;
     stop(false);
     monster?.dispose();
     monster = null;
     loading = null;
     say(`Godzilla unavailable: ${error.message}. Press G to retry.`, true);
+    if (preparing) dialogs.showError(error);
   }
   function fly(camera, duration) {
     return view.goTo(camera, { duration, easing: "ease-in-out" }).catch(error => {
@@ -136,12 +158,74 @@ export function setupGodzilla({
   function takeOverCamera() {
     const owned = cameraOwned;
     cameraOwned = false;
+    sightCameraRequested = false;
     savedCamera = null;
     if (owned) view.animation?.stop();
+  }
+  function sightMessage(message, error = false) {
+    sightStatus.hidden = !message;
+    sightStatus.textContent = message;
+    sightStatus.dataset.error = String(error);
+  }
+  function clearSightLines() {
+    eyeRequest++;
+    eyeController?.abort();
+    eyeController = null;
+    eyeSight?.dispose();
+    eyeSight = null;
+    eyeLoading = false;
+    if (sightCameraRequested) takeOverCamera();
+    sightMessage("");
+    buttons();
+  }
+  function failSightLines(error) {
+    console.warn("[Badouzi Digital Twin] Godzilla sight lines:", error);
+    clearSightLines();
+    sightMessage(`Sight lines unavailable: ${error.message}. Try the button again.`, true);
+  }
+  async function toggleSightLines() {
+    if (eyeSight || eyeLoading) {
+      clearSightLines();
+      return;
+    }
+    if (!active || disposed || time < DURATION_S) return;
+    prepareSightView();
+    takeOverCamera();
+    const request = ++eyeRequest;
+    const controller = new AbortController();
+    eyeController = controller;
+    eyeLoading = true;
+    sightCameraRequested = true;
+    cameraOwned = true;
+    sightMessage("Finding eight harbour landmarks...");
+    buttons();
+    try {
+      const [module, data] = await Promise.all([import("./eye-sightlines.js"), getSightTargets()]);
+      if (request !== eyeRequest || controller.signal.aborted || disposed) return;
+      const targets = module.selectHarbourTargets(data, view.spatialReference);
+      const loaded = await module.createEyeSightLines(view, monster, targets, { signal: controller.signal });
+      if (request !== eyeRequest || controller.signal.aborted || disposed) {
+        loaded.dispose();
+        return;
+      }
+      eyeSight = loaded;
+      sightMessage("");
+      if (cameraOwned && sightCameraRequested) await fly(loaded.cameraTarget(), 2000);
+    } catch (error) {
+      if (request === eyeRequest && !controller.signal.aborted && !disposed) failSightLines(error);
+    } finally {
+      if (request === eyeRequest) {
+        eyeLoading = false;
+        sightCameraRequested = false;
+        cameraOwned = false;
+        buttons();
+      }
+    }
   }
   function stop(restore = true) {
     const run = ++generation;
     active = false;
+    clearSightLines();
     cancelAnimationFrame(frame);
     readinessController?.abort();
     readinessController = null;
@@ -161,8 +245,9 @@ export function setupGodzilla({
       });
     }
     panel.dataset.state = "idle";
-    say(getScenario() === "+3m" ? "Ready. G plays the offshore reveal." : "Select +3m, then press G to reveal.");
+    say(getScenario() === "+3m" ? "" : "Select +3m, then press G to reveal.");
     buttons();
+    dialogs.closeEncounter();
   }
   async function start() {
     if (active || disposed) return;
@@ -182,23 +267,22 @@ export function setupGodzilla({
     cameraOwned = !isManualNavigationActive();
     savedCamera = cameraOwned ? view.camera.clone() : null;
     closeInspector();
-    say("Preparing the model...");
     panel.dataset.state = "loading";
     buttons();
     try {
-      const water = wakeToggle.checked ? loadWake().catch(error => {
-        if (!disposed && wakeToggle.checked) failWake(error);
-      }) : Promise.resolve();
+      dialogs.showEncounter();
+      const water = loadWake().catch(error => {
+        if (!disposed) failWake(error);
+      });
       const preparation = Promise.all([loadMonster(), water]).then(() => {
         if (run !== generation || disposed || getScenario() !== "+3m") return;
         monster.update(sampleReveal(0));
         monster.setVisible(true);
-        if (wakeToggle.checked && wake) {
+        if (wake) {
           wake.reset();
           wake.setVisible(true);
         }
         if (cameraOwned) {
-          say("Framing the harbour...");
           panel.dataset.state = "framing";
         }
       });
@@ -207,31 +291,21 @@ export function setupGodzilla({
       await Promise.all([preparation, framing]);
       if (run !== generation) return;
       panel.dataset.state = "waiting-scene";
-      const waitStatus = reactiveUtils.watch(() => {
-        if (!view.stationary || view.interacting) return "Hold the camera still while the scene finishes rendering...";
-        if (view.allLayerViews.some(layerView =>
-          layerView.visible && layerView.updating && layerView.layer.type === "gaussian-splat")) {
-          return "Loading the harbour's 3D scan for this view...";
+      const sceneContent = {
+        get readyToDraw() { return monster.readyToDraw && (!wake || wake.readyToDraw); }
+      };
+      await dialogs.waitForProceed(view, sceneContent, {
+        signal: controller.signal,
+        onReadyChange(ready) {
+          panel.dataset.state = ready ? "ready" : "waiting-scene";
         }
-        if (view.updating || !monster.readyToDraw || (wakeToggle.checked && wake && !wake.readyToDraw)) {
-          return "Finishing the scenery, model and water...";
-        }
-        return "Scene rendered. Letting the water settle...";
-      }, message => say(message), { initial: true });
-      try {
-        const sceneContent = {
-          get readyToDraw() { return monster.readyToDraw && (!wakeToggle.checked || !wake || wake.readyToDraw); }
-        };
-        await waitForSceneReady(view, sceneContent, { signal: controller.signal });
-      } finally {
-        waitStatus.remove();
-      }
+      });
       if (run !== generation || getScenario() !== "+3m") return;
+      dialogs.closeEncounter();
       say("Offshore reveal. Drag or press V to fly freely.");
       panel.dataset.state = "playing";
       // Framing and resource loading never consume the creature's motion clock.
       const started = performance.now();
-      let closingMove = false;
       function tick() {
         if (run !== generation || disposed) return;
         try {
@@ -239,7 +313,11 @@ export function setupGodzilla({
           time = Math.min(elapsed, DURATION_S);
           const state = sampleReveal(time);
           monster.update(state, elapsed);
-          if (wakeToggle.checked && wake) {
+          if (eyeSight) {
+            try { eyeSight.update(elapsed); }
+            catch (error) { failSightLines(error); }
+          }
+          if (wake) {
             try {
               wake.update(state, elapsed, () => monster.getWaterContact());
             } catch (error) {
@@ -247,16 +325,14 @@ export function setupGodzilla({
             }
           }
           if (panel.dataset.state !== "holding") {
-            if (variant.value === "reveal" && cameraOwned) {
+            if (cameraOwned) {
               const camera = sampleCinematicCamera(time);
               if (camera) view.camera = new Camera(camera);
-            } else if (variant.value === "walk" && time >= RISE_END_S && !closingMove) {
-              closingMove = true;
-              if (cameraOwned) fly(CAMERA_END, 11000).catch(fail);
             }
             if (state.done) {
               panel.dataset.state = "holding";
-              say("Reveal complete. Explore freely; Reset hides the creature.");
+              say("");
+              buttons();
             }
           }
           frame = requestAnimationFrame(tick);
@@ -293,20 +369,14 @@ export function setupGodzilla({
   document.addEventListener("keydown", keydown);
   play.addEventListener("click", onPlay);
   reset.addEventListener("click", onReset);
-  wakeToggle.addEventListener("change", () => {
-    if (wakeToggle.checked) loadWake().catch(error => { if (!disposed && wakeToggle.checked) failWake(error); });
-    else {
-      wake?.setVisible(false);
-      wake?.reset();
-      wakeMessage("");
-    }
-  });
+  sightButton.addEventListener("click", toggleSightLines);
+  panel.querySelector(".godzilla-credits-link").addEventListener("click", () => dialogs.showCredits());
   panel.querySelector("#godzillaClose").addEventListener("click", onClose);
   buttons();
-  say("Preparing the model. Select +3m, then Play.");
+  say("Finding monster...");
   loadMonster().then(() => {
     if (!active && !disposed) {
-      say(getScenario() === "+3m" ? "Ready. G plays the offshore reveal." : "Select +3m, then press G to reveal.");
+      say(getScenario() === "+3m" ? "" : "Select +3m, then press G to reveal.");
     }
   }).catch(error => {
     if (!active && !disposed) fail(error);
@@ -314,18 +384,20 @@ export function setupGodzilla({
   return {
     stop,
     takeOverCamera,
+    clearSightLines,
     showControls() {
       panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      (play.disabled ? reset : play).focus({ preventScroll: true });
     },
     onScenarioChange() {
       if (getScenario() !== "+3m") stop();
       else {
         buttons();
-        if (!active && panel.dataset.error !== "true") say("Ready. G plays the offshore reveal.");
+        if (!active && panel.dataset.error !== "true") say("");
       }
     },
     get state() {
-      return { active, time, duration: DURATION_S, mode: variant.value, phase: panel.dataset.state };
+      return { active, time, duration: DURATION_S, mode: "reveal", phase: panel.dataset.state };
     },
     dispose() {
       disposed = true;
@@ -334,6 +406,7 @@ export function setupGodzilla({
       wake?.dispose();
       interaction.remove();
       document.removeEventListener("keydown", keydown);
+      dialogs.dispose();
       panel.remove();
     }
   };

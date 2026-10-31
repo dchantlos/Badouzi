@@ -68,8 +68,7 @@ export function setupSmoothZoom({ view, isEnabled, onStart, onError }) {
         view.animation?.stop();
         const bounds = container.getBoundingClientRect();
         const screen = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-        const layers = view.map.allLayers.filter(layer => layer.id !== "godzilla-wake-study");
-        const target = view.toMap(screen, { include: [view.map.ground, ...layers] }) ||
+        const target = view.toMap(screen, { include: [view.map.ground, ...view.map.allLayers] }) ||
           view.toMap({ x: view.width / 2, y: view.height / 2 }) || view.center;
         if (!target) throw new Error("No zoom target is available in this view");
         const anchor = [0, 0, 0];

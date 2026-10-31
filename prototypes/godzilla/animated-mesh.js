@@ -4,10 +4,11 @@ import Graphic from "@arcgis/core/Graphic.js";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js";
 import MeshMaterialMetallicRoughness from "@arcgis/core/geometry/support/MeshMaterialMetallicRoughness.js";
 import MeshTexture from "@arcgis/core/geometry/support/MeshTexture.js";
+import { fromRenderCoordinates, renderCoordinateTransformAt } from "@arcgis/core/views/3d/webgl.js";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { createArmMotion } from "./arm-motion.js";
-import { HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
+import { EYE_BONES, HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
 import { waterContactBounds } from "./water-contact.js";
 import { DORSAL_REGIONS, dorsalEmission, partitionDorsalPlates } from "./dorsal-plates.js";
 import { HEIGHT_M, WALK_CYCLES, WATER_Z, sampleArmMotion, sampleReveal } from "./timeline.js";
@@ -132,6 +133,24 @@ export async function createAnimatedMonster(view, { walking }) {
   mixer.clipAction(clip).play();
   const armMotion = createArmMotion(gltf.scene);
   const headMotion = createHeadMotion(gltf.scene);
+  const eyeBones = Object.fromEntries(Object.entries(EYE_BONES).map(([eye, name]) => {
+    const bone = gltf.scene.getObjectByName(name);
+    if (!bone?.isBone) throw new Error(`Godzilla's ${eye} eye joint is missing`);
+    return [eye, bone];
+  }));
+  const eyeTransform = new THREE.Matrix4();
+  const eyeLocalTransform = new THREE.Matrix4();
+  const eyeVertex = new THREE.Vector3();
+  const eyeLeftCentre = new THREE.Vector3();
+  const eyeRightCentre = new THREE.Vector3();
+  const eyeOutward = new THREE.Vector3();
+  const eyeVertices = { left: [], right: [] };
+  const eyeRotation = new THREE.Quaternion();
+  const eyeAxis = new THREE.Vector3();
+  const eyeTranslation = new THREE.Vector3();
+  const eyeScale = new THREE.Vector3();
+  const eyeRenderPosition = [0, 0, 0];
+  const eyeMapPosition = [0, 0, 0];
   const headBones = new Set();
   gltf.scene.getObjectByName(HEAD_BONES.neckBase).traverse(object => {
     if (object.isBone) headBones.add(object);
@@ -161,13 +180,17 @@ export async function createAnimatedMonster(view, { walking }) {
     for (let index = 0; index < attributes.position.count; index++) {
       skinIndices.fromBufferAttribute(attributes.skinIndex, index);
       skinWeights.fromBufferAttribute(attributes.skinWeight, index);
+      let hasHead = false, hasLeftEye = false, hasRightEye = false;
       for (let component = 0; component < 4; component++) {
-        if (skinWeights.getComponent(component) > 0 &&
-          headBones.has(object.skeleton.bones[skinIndices.getComponent(component)])) {
-          headVertices.push(index);
-          break;
-        }
+        if (skinWeights.getComponent(component) <= 0) continue;
+        const bone = object.skeleton.bones[skinIndices.getComponent(component)];
+        hasHead ||= headBones.has(bone);
+        hasLeftEye ||= bone === eyeBones.left;
+        hasRightEye ||= bone === eyeBones.right;
       }
+      if (hasHead) headVertices.push(index);
+      if (hasLeftEye) eyeVertices.left.push(vertexOffset + index);
+      if (hasRightEye) eyeVertices.right.push(vertexOffset + index);
     }
     const resource = {
       object, headVertices, vertexOffset,
@@ -179,6 +202,7 @@ export async function createAnimatedMonster(view, { walking }) {
     vertexOffset += attributes.position.count;
     return resource;
   });
+  if (!eyeVertices.left.length || !eyeVertices.right.length) throw new Error("Godzilla's rendered eye surfaces are missing");
   let lastPose = -1;
   let lastRise = -1;
   let lastArmFrame = -1;
@@ -240,6 +264,42 @@ export async function createAnimatedMonster(view, { walking }) {
     get readyToDraw() {
       return layerView !== undefined && !layerView.updating && !layerView.suspended;
     },
+    getEyeObservers() {
+      const frame = renderCoordinateTransformAt(view, mesh.vertexSpace.origin, mesh.spatialReference);
+      if (!frame) throw new Error("Cannot locate Godzilla's eyes in the scene");
+      const transform = mesh.transform;
+      eyeRotation.setFromAxisAngle(eyeAxis.fromArray(transform.rotationAxis).normalize(),
+        transform.rotationAngle * Math.PI / 180);
+      eyeLocalTransform.compose(eyeTranslation.fromArray(transform.translation), eyeRotation,
+        eyeScale.fromArray(transform.scale));
+      eyeTransform.fromArray(frame).multiply(eyeLocalTransform);
+      eyeBones.left.getWorldPosition(eyeLeftCentre);
+      eyeLeftCentre.set(eyeLeftCentre.x, -eyeLeftCentre.z, eyeLeftCentre.y);
+      eyeBones.right.getWorldPosition(eyeRightCentre);
+      eyeRightCentre.set(eyeRightCentre.x, -eyeRightCentre.z, eyeRightCentre.y);
+      return Object.fromEntries(["left", "right"].map(eye => {
+        eyeOutward.copy(eyeLeftCentre).sub(eyeRightCentre).normalize().multiplyScalar(eye === "left" ? 1 : -1);
+        let index = eyeVertices[eye][0], furthest = -Infinity;
+        for (const candidate of eyeVertices[eye]) {
+          const projection = eyeVertex.fromArray(positions, candidate * 3).dot(eyeOutward);
+          if (projection > furthest) { furthest = projection; index = candidate; }
+        }
+        // A bone centre lies inside the opaque eye; start 8 cm beyond its actual outer surface.
+        eyeVertex.fromArray(positions, index * 3).addScaledVector(eyeOutward, 0.08 / scale)
+          .applyMatrix4(eyeTransform).toArray(eyeRenderPosition);
+        if (!fromRenderCoordinates(view, eyeRenderPosition, 0, eyeMapPosition, 0, mesh.spatialReference, 1)) {
+          throw new Error(`Cannot project Godzilla's ${eye} eye`);
+        }
+        return [eye, {
+          position: new Point({
+            x: eyeMapPosition[0], y: eyeMapPosition[1], z: eyeMapPosition[2],
+            spatialReference: mesh.spatialReference
+          }),
+          feature: graphic
+        }];
+      }));
+    },
+    getFramingExtent() { return mesh.extent.clone(); },
     getWaterContact() {
       const body = mesh.components.find(component => component.name === "Object_0");
       if (!body?.faces) throw new Error("Godzilla's water-contact surface is missing");
@@ -250,8 +310,7 @@ export async function createAnimatedMonster(view, { walking }) {
       const armFrame = Math.round(state.approach * totalPoseFrames);
       const pose = walking ? armFrame / 30 : 0;
       const rise = Math.round(state.rise * 256) / 256;
-      const headRate = state.done ? 15 : 30;
-      const headTime = rise > 0.15 ? Math.round(seconds * headRate) / headRate : 0;
+      const headTime = rise > 0.15 ? Math.round(seconds * 30) / 30 : 0;
       const bodyChanged = pose !== lastPose || rise !== lastRise || armFrame !== lastArmFrame;
       if (bodyChanged || headTime !== lastHeadTime) {
         const armState = { rise, approach: armFrame / totalPoseFrames };

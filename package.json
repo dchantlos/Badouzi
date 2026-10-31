@@ -1,13 +1,13 @@
 {
   "name": "badouzi-port-digital-twin",
   "version": "1.0.0",
-  "description": "Immersive 3D Digital Twin of Badouzi Port built with the ArcGIS Maps SDK for JavaScript.",
+  "description": "Interactive 3D digital twin of Badouzi Fishing Harbour, Taiwan, with field assets, illustrative tidal exposure, line-of-sight analysis and a cinematic Godzilla encounter.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test exposure.test.js weather.test.js flight-motion.test.js zoom-motion.test.js prototypes/godzilla/*.test.js"
+    "test": "node --test exposure.test.js weather.test.js field-assets.test.js flight-motion.test.js zoom-motion.test.js line-of-sight.test.js prototypes/godzilla/*.test.js"
   },
   "devDependencies": {
     "vite": "^5.4.0"

@@ -17,6 +17,9 @@ import Glow from "@arcgis/core/webscene/Glow.js";
 import { createWeatherPanel } from "./weather.js";
 import { setupFlight } from "./flight.js";
 import { setupSmoothZoom } from "./smooth-zoom.js";
+import { createLineOfSightTool } from "./line-of-sight.js";
+import { createFieldAssetLayer } from "./field-assets.js";
+import { setupInspectorPresentation } from "./inspector-presentation.js";
 import {
   evaluateScenario,
   formatUSD,
@@ -327,8 +330,7 @@ function initApp() {
 
   // Glowing-orb marker hung on a near-invisible hairline callout "pin" so it
   // never blocks the reality mesh. The small type glyph reads through the glass.
-  function makeImpactSymbol(depth, layerTitle) {
-    const c = depthSeverity(depth).color;
+  function makeAssetSymbol(c, layerTitle) {
     const layers = [orbLayer(c, ORB_SIZE)];
     const glyph = RISK_GLYPHS[layerTitle];
     if (glyph) {
@@ -345,6 +347,10 @@ function initApp() {
       verticalOffset: { screenLength: 26, maxWorldLength: 60, minWorldLength: 12 },
       callout: { type: "line", size: 0.75, color: [255, 255, 255, 0.4] }
     };
+  }
+
+  function makeImpactSymbol(depth, layerTitle) {
+    return makeAssetSymbol(depthSeverity(depth).color, layerTitle);
   }
 
   // Larger glowing orb for an at-risk BIM building.
@@ -524,6 +530,7 @@ function initApp() {
 
       // Run (or clear) the what-if exposure analysis for this scenario.
       runSurgeImpact(activeCfg.title);
+      fieldAssets?.setScenario(activeCfg.value);
 
       // Keep an open location / asset card in step with the new scenario.
       refreshInspector();
@@ -598,6 +605,7 @@ function initApp() {
   let godzilla = null;
   let flight = null;
   let smoothZoom = null;
+  let fieldAssets = null;
 
   /** True for the what-if scenarios that have an analysis water surface. */
   function isSurgeScenario(title) {
@@ -893,25 +901,24 @@ function initApp() {
     }
   }
 
+  function loadPointInventory() {
+    return Promise.all(ASSET_LAYERS.map(function (cfg) {
+      return cachedInput(cfg.id, () => loadPointAssets(cfg), {
+        label: cfg.label, singular: cfg.singular, reason: cfg.singular + " data unavailable"
+      });
+    }));
+  }
+
   /** Shared inventory for every scenario; concurrent runs share requests. */
   async function loadInventory() {
-    const assets = Promise.all(
-      ASSET_LAYERS.map(function (cfg) {
-        return cachedInput(
-          cfg.id,
-          function () {
-            return loadPointAssets(cfg);
-          },
-          { label: cfg.label, singular: cfg.singular, reason: cfg.singular + " data unavailable" }
-        );
-      }).concat(
-        cachedInput("bim", loadBimModels, {
-          label: "BIM building models",
-          singular: "BIM building model",
-          reason: "BIM building models unavailable"
-        })
-      )
-    );
+    const assets = Promise.all([
+      loadPointInventory(),
+      cachedInput("bim", loadBimModels, {
+        label: "BIM building models",
+        singular: "BIM building model",
+        reason: "BIM building models unavailable"
+      })
+    ]).then(([points, buildings]) => [...points, buildings]);
     const coverage = cachedInput("coverage", loadLandSample, { reason: "elevation sampling failed" });
     return { assets: await assets, coverage: await coverage };
   }
@@ -980,6 +987,7 @@ function initApp() {
     drawImpactMarkers(current.exposure);
     renderExposure(current);
     renderComparison(scenarioTitle, results);
+    refreshInspector();
     // Measure after the drawer's open transition has settled.
     setTimeout(updateMoreHint, 500);
   }
@@ -1502,6 +1510,7 @@ function initApp() {
       });
     }
     document.addEventListener("keydown", function (e) {
+      if (document.querySelector("dialog[open]")) return;
       if (e.key === "Escape" && !e.defaultPrevented && !panel.hidden) {
         e.preventDefault();
         setOpen(false, true);
@@ -1520,6 +1529,7 @@ function initApp() {
     const titleEl = document.getElementById("inspectorTitle");
     const bodyEl = document.getElementById("inspectorBody");
     const closeBtn = document.getElementById("inspectorClose");
+    const presentation = setupInspectorPresentation(card, document.getElementById("inspectorExpand"));
 
     // Layer types that are visual-only surfaces with no queryable
     // per-object attributes (reality captures, terrain).
@@ -1544,11 +1554,14 @@ function initApp() {
     // The card lives in the top-left panel and takes the weather section's
     // place while open (body.inspecting), keeping the 3D scene unobstructed.
     function setCardOpen(open) {
+      const wasOpen = card.classList.contains("visible");
       card.classList.toggle("visible", open);
       document.body.classList.toggle("inspecting", open);
+      if (open && !wasOpen && !presentation.expanded) card.scrollIntoView({ block: "nearest" });
     }
 
     function closeCard() {
+      presentation.collapse();
       setCardOpen(false);
       probeLayer.removeAll();
       probeSeq++;
@@ -1586,6 +1599,13 @@ function initApp() {
         bodyEl.appendChild(btn);
       }
       setCardOpen(true);
+      presentation.refresh();
+    }
+
+    function configuredRows(layerTitle, attributes) {
+      return (INSPECTOR_FIELDS[layerTitle] || [])
+        .filter(field => attributes[field.name] !== undefined)
+        .map(field => ({ label: field.label, value: formatValue(attributes[field.name], field.type) }));
     }
 
     /** Rows for an assessed asset, always evaluated for the ACTIVE scenario. */
@@ -1595,6 +1615,7 @@ function initApp() {
       const rows = [
         { label: "Asset", value: item.name || "\u2014" },
         { label: "Source layer", value: item.sourceLabel },
+        ...configuredRows(item.layerTitle, item.attributes || {}),
         { label: "Scenario", value: activeScenarioTitle },
         {
           label: "Sampled ground elevation",
@@ -1718,6 +1739,12 @@ function initApp() {
 
     // Scenario switches re-evaluate an open asset / location card.
     refreshInspector = function () {
+      if (inspected?.kind === "exposure") {
+        const key = inspected.item.key;
+        const current = isSurgeScenario(activeScenarioTitle)
+          ? inventoryItems.get(key) : fieldAssets?.getItem(key);
+        if (current) inspected.item = current;
+      }
       if (inspected && inspected.kind !== "attributes") render();
     };
 
@@ -1768,9 +1795,7 @@ function initApp() {
 
       let response;
       try {
-        response = await view.hitTest(event, {
-          exclude: view.map.allLayers.filter(layer => layer.id === "godzilla-wake-study").toArray()
-        });
+        response = await view.hitTest(event);
       } catch (e) {
         response = { results: [] };
       }
@@ -1785,10 +1810,11 @@ function initApp() {
       });
       const hit = hits[0];
 
-      // An exposure marker — explain the assessed asset behind it.
-      if (hit && hit.graphic.layer === impactLayer) {
+      // Both marker layers inspect the same source records and active scenario.
+      if (hit && (hit.graphic.layer === impactLayer || hit.graphic.layer === fieldAssets?.layer)) {
         const key = hit.graphic.attributes && hit.graphic.attributes.exposureKey;
-        const item = key ? inventoryItems.get(key) : null;
+        const item = key ? hit.graphic.layer === fieldAssets?.layer
+          ? fieldAssets.getItem(key) : inventoryItems.get(key) : null;
         if (item) {
           probeLayer.removeAll();
           probeSeq++;
@@ -1808,18 +1834,7 @@ function initApp() {
         const layerTitle = (layer && layer.title) || "Feature";
         const attrs = graphic.attributes || {};
 
-        const configured = INSPECTOR_FIELDS[layerTitle];
-        let rows = [];
-
-        if (configured) {
-          rows = configured
-            .filter(function (f) {
-              return attrs[f.name] !== undefined;
-            })
-            .map(function (f) {
-              return { label: f.label, value: formatValue(attrs[f.name], f.type) };
-            });
-        }
+        let rows = configuredRows(layerTitle, attrs);
 
         // Fallback: show up to 8 populated, non-system attributes.
         if (!rows.length) {
@@ -1897,8 +1912,8 @@ function initApp() {
   });
 
   /**
-   * Wire up the Slice and Distance tools. Only one is active at a time; both
-   * render widgets into the top-right host. (Volume measurement is not
+   * Wire up the Slice, Distance and Line of sight tools. Only one is active
+   * at a time, using the top-right host. (Volume measurement is not
    * offered: the SDK does not support it on Gaussian splat layers, this
    * scene's primary surface.) Returns predicates the inspector uses to stay
    * out of the tools' way.
@@ -1908,6 +1923,7 @@ function initApp() {
 
     const sliceBtn = document.getElementById("toolSlice");
     const lineBtn = document.getElementById("toolLine");
+    const sightBtn = document.getElementById("toolSight");
     const clearBtn = document.getElementById("toolClear");
 
     // Slice widget renders into its own node; Measurement into another.
@@ -1917,7 +1933,8 @@ function initApp() {
     const slice = new Slice({ view: view, container: sliceNode });
     const measurement = new Measurement({ view: view, container: measureNode });
 
-    let active = null; // "slice" | "measure" | null
+    let active = null; // "slice" | "measure" | "sight" | null
+    let sight = null;
 
     function setPressed(btn, pressed) {
       btn.classList.toggle("active", pressed);
@@ -1928,15 +1945,19 @@ function initApp() {
       // Reset the slice plane and any active measurement.
       if (slice.viewModel) slice.viewModel.clear();
       measurement.clear();
+      sight?.dispose();
+      sight = null;
       if (sliceNode.parentNode) host.removeChild(sliceNode);
       if (measureNode.parentNode) host.removeChild(measureNode);
       active = null;
       setPressed(sliceBtn, false);
       setPressed(lineBtn, false);
+      setPressed(sightBtn, false);
     }
 
     function showSlice() {
       clearAll();
+      godzilla?.clearSightLines();
       closeInspector();
       host.appendChild(sliceNode);
       active = "slice";
@@ -1945,11 +1966,29 @@ function initApp() {
 
     function showMeasurement(tool, btn) {
       clearAll();
+      godzilla?.clearSightLines();
       closeInspector();
       host.appendChild(measureNode);
       measurement.activeTool = tool; // "direct-line" distance measurement
       active = "measure";
       setPressed(btn, true);
+    }
+
+    function showLineOfSight() {
+      clearAll();
+      godzilla?.clearSightLines();
+      closeInspector();
+      active = "sight";
+      setPressed(sightBtn, true);
+      sight = createLineOfSightTool({
+        view,
+        onClose() {
+          clearAll();
+          sightBtn.focus({ preventScroll: true });
+        },
+        onError(error) { log("Line of sight failed", error); }
+      });
+      host.appendChild(sight.element);
     }
 
     sliceBtn.addEventListener("click", function () {
@@ -1962,9 +2001,15 @@ function initApp() {
         ? clearAll()
         : showMeasurement("direct-line", lineBtn);
     });
+    sightBtn.addEventListener("click", function () {
+      flight?.exit();
+      godzilla?.takeOverCamera();
+      active === "sight" ? clearAll() : showLineOfSight();
+    });
     clearBtn.addEventListener("click", function () {
       flight?.exit();
       clearAll();
+      godzilla?.clearSightLines();
     });
 
     return {
@@ -1972,9 +2017,9 @@ function initApp() {
       isActive: function () {
         return active !== null;
       },
-      // Clicks belong to the tool while measuring or while placing a slice.
+      // Analysis clicks must not also open the asset/location inspector.
       capturesClicks: function () {
-        if (active === "measure") return true;
+        if (active === "measure" || active === "sight") return true;
         return active === "slice" && !!slice.viewModel && slice.viewModel.state === "slicing";
       }
     };
@@ -2000,41 +2045,79 @@ function initApp() {
     });
   }
 
-  function setupHiddenScene(tools) {
-    const trigger = document.getElementById("godzillaUnlock");
-    let unlocking = false;
+  async function getGodzillaSightTargets() {
+    const inventory = await loadInventory();
+    const harbourExtent = findLayerByTitle(REALITY_MESH_TITLE)?.fullExtent;
+    if (!harbourExtent) throw new Error("The mapped harbour boundary is unavailable");
+    const bollards = inventory.assets.find(input => input.id === "bollards");
+    if (bollards?.status !== "ok") {
+      throw new Error("Mapped quay locations are unavailable. Retry the asset analysis first.");
+    }
+    const buildings = EXPECTED_BIM_MODELS.map(name => {
+      const extent = findLayerByTitle(name)?.fullExtent;
+      if (!extent || !Number.isFinite(extent.zmax)) throw new Error(`The ${name} landmark is unavailable`);
+      return {
+        key: `bim:${name}`, name, x: extent.center.x, y: extent.center.y, z: extent.zmax + 0.5,
+        sr: extent.spatialReference
+      };
+    });
+    const quays = bollards.items.filter(item => !item.issue && isValidElevation(item.groundZ))
+      .map(item => ({
+        key: item.key, name: `${item.name || item.key} (quay)`,
+        x: item.x, y: item.y, z: item.groundZ + 1.5, sr: item.sr
+      }));
+    return { buildings, quays, harbourExtent: harbourExtent.clone() };
+  }
+
+  function setupGodzillaButton(tools) {
+    const trigger = document.getElementById("godzillaBtn");
+    let opening = false;
     let notice;
-    trigger.hidden = false;
+    trigger.disabled = false;
     trigger.addEventListener("click", async function () {
-      if (godzilla) {
-        godzilla.showControls();
-        return;
-      }
-      if (unlocking) return;
-      unlocking = true;
+      if (opening) return;
+      opening = true;
       trigger.disabled = true;
+      trigger.setAttribute("aria-busy", "true");
       try {
-        const { setupGodzilla } = await import("./prototypes/godzilla/preview.js");
-        godzilla = setupGodzilla({
-          view, getScenario: () => activeScenarioValue, closeInspector, tools,
-          isManualNavigationActive: () => flight.isActive(),
-          onClose() {
-            godzilla.dispose();
-            godzilla = null;
-          }
-        });
+        if (activeScenarioValue !== "+3m") {
+          activateScenario("Above Sea Level 3m");
+          if (activeScenarioValue !== "+3m") throw new Error("The +3m scene is not available");
+        }
+        if (!godzilla) {
+          const { setupGodzilla } = await import("./prototypes/godzilla/preview.js");
+          godzilla = setupGodzilla({
+            view, getScenario: () => activeScenarioValue, closeInspector, tools,
+            isManualNavigationActive: () => flight.isActive(),
+            getSightTargets: getGodzillaSightTargets,
+            prepareSightView() {
+              flight?.exit();
+              smoothZoom?.cancel();
+              tools.clear();
+              closeInspector();
+            },
+            onClose() {
+              godzilla.dispose();
+              godzilla = null;
+              trigger.setAttribute("aria-expanded", "false");
+              trigger.focus({ preventScroll: true });
+            }
+          });
+        }
         notice?.remove();
+        trigger.setAttribute("aria-expanded", "true");
         godzilla.showControls();
       } catch (error) {
-        log("Hidden scene controls failed to initialize", error);
+        log("Godzilla controls failed to initialize", error);
         notice ??= document.createElement("p");
         notice.className = "dock-section";
         notice.setAttribute("role", "alert");
-        notice.textContent = "The hidden scene controls could not load. Click the top-right corner to retry.";
+        notice.textContent = `Godzilla could not open: ${error.message}. Use the Godzilla button to retry.`;
         document.querySelector(".dock-panel").append(notice);
       } finally {
-        unlocking = false;
+        opening = false;
         trigger.disabled = false;
+        trigger.removeAttribute("aria-busy");
       }
     });
   }
@@ -2046,6 +2129,14 @@ function initApp() {
       clearTimeout(watchdog);
       enableSceneGlow();
       buildLayerToggles();
+      fieldAssets = createFieldAssetLayer({
+        view,
+        container: document.getElementById("layerToggles"),
+        loadInputs: loadPointInventory,
+        makeSymbol: makeAssetSymbol,
+        onDataChanged: () => refreshInspector(),
+        onError: error => log("Field-collected assets", error)
+      });
       setupHomeButton();
       setupExposurePanel();
       buildSurgeControl();
@@ -2071,7 +2162,7 @@ function initApp() {
         }
       });
       setupAssetInspector(tools);
-      setupHiddenScene(tools);
+      setupGodzillaButton(tools);
       dismissOverlay();
       // App is up — from here on, stray async errors are non-fatal.
       appReady = true;
