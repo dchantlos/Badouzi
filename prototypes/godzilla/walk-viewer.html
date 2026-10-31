@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Godzilla - slow walking study</title>
+    <style>
+      body { margin: 0; background: #10191e; color: #dce5eb; font: 14px system-ui, sans-serif; }
+      canvas { display: block; }
+      header { position: absolute; top: 24px; left: 28px; max-width: 430px; line-height: 1.5; pointer-events: none; }
+      h1 { margin: 0 0 8px; font-size: 19px; font-weight: 600; }
+      p { margin: 4px 0; color: #afbec6; }
+      footer { position: absolute; bottom: 24px; left: 28px; font-size: 12px; }
+      a { color: #75d8d0; }
+      button { background: #20353e; border: 1px solid #37545f; color: #e0edf3; border-radius: 6px; padding: 8px 14px; cursor: pointer; margin-right: 12px; }
+      #error { color: #afbec6; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Godzilla / slow wading study</h1>
+      <p>6.4-second gait. Planted feet, weight transfer, shoulder and elbow motion.</p>
+      <p>This study exposes the full body; the scene version hides the lower body in water.</p>
+      <p id="error" role="status">Loading the Blender animation...</p>
+    </header>
+    <footer>
+      <button id="pause" type="button">Pause</button>
+      <a href="/">Return to Badouzi</a> |
+      Model: <a href="https://sketchfab.com/Draco120">Draco</a>, CC BY 4.0.
+    </footer>
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { createArmMotion } from "./arm-motion.js";
+      import { WALK_CYCLES, sampleArmMotion } from "./timeline.js";
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1;
+      document.body.append(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#10191e");
+      const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 1500);
+      camera.position.set(168, 75, 182);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 31, -8);
+      controls.enableDamping = true;
+      controls.update();
+      scene.add(new THREE.HemisphereLight("#bcd5e0", "#414b50", 2));
+      const sun = new THREE.DirectionalLight("#fff5e3", 3);
+      sun.position.set(90, 150, 100);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 500 });
+      sun.shadow.bias = -0.00015;
+      scene.add(sun);
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(900, 900),
+        new THREE.MeshStandardMaterial({ color: "#28373e", roughness: 1 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.55;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      const grid = new THREE.GridHelper(900, 90, "#435b65", "#31464f");
+      grid.position.y = -0.53;
+      scene.add(grid);
+      let paused = false;
+      document.getElementById("pause").onclick = () => {
+        paused = !paused;
+        document.getElementById("pause").textContent = paused ? "Resume" : "Pause";
+      };
+      try {
+        const gltf = await new GLTFLoader().loadAsync(new URL("./godzilla-walk.glb", import.meta.url).href);
+        const clip = gltf.animations.find(a => a.name === "Slow_Wade_6_4s");
+        if (!clip) throw new Error("Walking animation is missing from the exported GLB");
+        const mixer = new THREE.AnimationMixer(gltf.scene);
+        mixer.clipAction(clip).play();
+        const armMotion = createArmMotion(gltf.scene);
+        const approachCycleDuration = clip.duration * WALK_CYCLES;
+        function applyPose(time) {
+          armMotion.restore();
+          mixer.setTime(time);
+          armMotion.apply(sampleArmMotion({
+            rise: 1,
+            approach: (time % approachCycleDuration) / approachCycleDuration
+          }));
+        }
+        applyPose(0);
+        gltf.scene.traverse(object => {
+          if (object.isMesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+          }
+        });
+        scene.add(gltf.scene);
+        window.walkStudy = { model: gltf.scene, mixer, clip, camera, applyPose };
+        document.getElementById("error").textContent = "Drag to orbit. No motion capture or pre-existing animation was used.";
+        let stride;
+        gltf.scene.traverse(object => {
+          if (Number.isFinite(object.userData.cycle_stride_source_units)) stride = object.userData.cycle_stride_source_units;
+        });
+        if (!stride) throw new Error("Stride metadata is missing");
+        let travel = 0;
+        const timer = new THREE.Timer();
+        function render() {
+          // The first RAF timestamp can precede the Timer's construction.
+          timer.update();
+          if (!paused) {
+            const delta = Math.min(timer.getDelta(), 0.05);
+            applyPose(mixer.time + delta);
+            const step = delta * stride / clip.duration;
+            travel += step;
+            gltf.scene.position.z = travel;
+            camera.position.z += step;
+            controls.target.z += step;
+          }
+          controls.update();
+          renderer.render(scene, camera);
+          requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+      } catch (error) {
+        console.error("Walking study:", error);
+        document.getElementById("error").textContent = error.message;
+        document.getElementById("error").style.color = "#ffbba6";
+      }
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+    </script>
+  </body>
+</html>

@@ -15,6 +15,7 @@ import Multipoint from "@arcgis/core/geometry/Multipoint.js";
 import Point from "@arcgis/core/geometry/Point.js";
 import Glow from "@arcgis/core/webscene/Glow.js";
 import { createWeatherPanel } from "./weather.js";
+import { setupFlight } from "./flight.js";
 import {
   evaluateScenario,
   formatUSD,
@@ -364,8 +365,8 @@ function initApp() {
     };
   }
 
-  // Scene-level bloom: only emissive surfaces (our orbs) glow — the reality
-  // mesh, BIM and terrain are untouched. Enabled once the view is ready.
+  // Scene-level bloom applies only to emissive surfaces, including the orbs
+  // and optional Godzilla plates; reality capture and terrain are untouched.
   const SCENE_GLOW = 0.85; // webscene Glow intensity, 0..1
   function enableSceneGlow() {
     const lighting = view.environment && view.environment.lighting;
@@ -525,6 +526,7 @@ function initApp() {
 
       // Keep an open location / asset card in step with the new scenario.
       refreshInspector();
+      godzilla?.onScenarioChange();
     }
 
     // Comparison rows reuse this exact activation flow.
@@ -592,6 +594,8 @@ function initApp() {
   let activateScenario = function () {};
   let refreshInspector = function () {};
   let closeInspector = function () {};
+  let godzilla = null;
+  let flight = null;
 
   /** True for the what-if scenarios that have an analysis water surface. */
   function isSurgeScenario(title) {
@@ -1496,7 +1500,10 @@ function initApp() {
       });
     }
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !panel.hidden) setOpen(false, true);
+      if (e.key === "Escape" && !e.defaultPrevented && !panel.hidden) {
+        e.preventDefault();
+        setOpen(false, true);
+      }
     });
   }
 
@@ -1685,6 +1692,8 @@ function initApp() {
       });
       // Recenter on the asset, closing in if needed but never zooming out.
       const scale = Math.min(view.scale || Infinity, item.representativePoint ? 600 : 350);
+      flight?.exit();
+      godzilla?.takeOverCamera();
       view.goTo({ target: target, scale: scale }, { duration: 1400 }).catch(function (err) {
         if (!err || err.name !== "AbortError") log("zoom to asset failed", err);
       });
@@ -1753,7 +1762,7 @@ function initApp() {
     }
 
     view.on("click", async function (event) {
-      if (tools.capturesClicks()) return;
+      if (tools.capturesClicks() || flight?.capturesClicks()) return;
 
       let response;
       try {
@@ -1940,16 +1949,22 @@ function initApp() {
     }
 
     sliceBtn.addEventListener("click", function () {
+      flight?.exit();
       active === "slice" ? clearAll() : showSlice();
     });
     lineBtn.addEventListener("click", function () {
+      flight?.exit();
       active === "measure" && measurement.activeTool === "direct-line"
         ? clearAll()
         : showMeasurement("direct-line", lineBtn);
     });
-    clearBtn.addEventListener("click", clearAll);
+    clearBtn.addEventListener("click", function () {
+      flight?.exit();
+      clearAll();
+    });
 
     return {
+      clear: clearAll,
       isActive: function () {
         return active !== null;
       },
@@ -1972,10 +1987,51 @@ function initApp() {
     const initial = scene.initialViewProperties && scene.initialViewProperties.viewpoint;
     const home = (initial || view.viewpoint).clone();
     btn.addEventListener("click", function () {
+      flight?.exit();
+      godzilla?.stop(false);
       view.goTo(home, { duration: 1800 }).catch(function (err) {
         // A user drag interrupting the flight is expected, not an error.
         if (!err || err.name !== "AbortError") log("home view navigation failed", err);
       });
+    });
+  }
+
+  function setupHiddenScene(tools) {
+    const trigger = document.getElementById("godzillaUnlock");
+    let unlocking = false;
+    let notice;
+    trigger.hidden = false;
+    trigger.addEventListener("click", async function () {
+      if (godzilla) {
+        godzilla.showControls();
+        return;
+      }
+      if (unlocking) return;
+      unlocking = true;
+      trigger.disabled = true;
+      try {
+        const { setupGodzilla } = await import("./prototypes/godzilla/preview.js");
+        godzilla = setupGodzilla({
+          view, getScenario: () => activeScenarioValue, closeInspector, tools,
+          isManualNavigationActive: () => flight.isActive(),
+          onClose() {
+            godzilla.dispose();
+            godzilla = null;
+          }
+        });
+        notice?.remove();
+        godzilla.showControls();
+      } catch (error) {
+        log("Hidden scene controls failed to initialize", error);
+        notice ??= document.createElement("p");
+        notice.className = "dock-section";
+        notice.setAttribute("role", "alert");
+        notice.textContent = "The hidden scene controls could not load. Click the top-right corner to retry.";
+        document.querySelector(".dock-panel").append(notice);
+      } finally {
+        unlocking = false;
+        trigger.disabled = false;
+      }
     });
   }
 
@@ -1991,7 +2047,16 @@ function initApp() {
       buildSurgeControl();
       setupRainToggle();
       const tools = setupAnalysisTools();
+      flight = setupFlight({
+        view,
+        onEnter() {
+          godzilla?.takeOverCamera();
+          tools.clear();
+          closeInspector();
+        }
+      });
       setupAssetInspector(tools);
+      setupHiddenScene(tools);
       dismissOverlay();
       // App is up — from here on, stray async errors are non-fatal.
       appReady = true;

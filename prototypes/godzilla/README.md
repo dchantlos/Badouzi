@@ -1,0 +1,143 @@
+# Godzilla easter egg
+
+The effect is included in the production build but is opt-in and lazy-loaded.
+The source directory retains its prototype name alongside the developer-only
+gait study and Blender recipe. No hosted feature service or Web Scene is edited.
+
+Click the invisible 20 x 20 pixel area at the extreme top-right of the app to
+reveal the controls. Choose **+3m**, select **Cinematic rise** or **Slow wade**,
+then click **Play** or press **G**. G does nothing before unlocking, and the old
+`?godzilla=` parameters no longer activate anything. Closing the controls
+hides the effect and disables G until the corner is clicked again.
+
+**Esc** resets, restoring the previous camera only if the effect still owns
+it. **Home view** hides the effect and returns home. Changing to another
+scenario also removes it. Dragging or pressing **V** takes over the camera
+without interrupting the creature. Starting while drone mode is active skips
+automatic camera flights. Exiting drone mode never resumes those flights.
+While flying, Esc belongs to navigation first; the Reset button remains
+available after freeing the cursor with X.
+
+After the establishing camera move, the model stays submerged and the motion
+clock pauses while the scene renders. Playback requires the view to be ready,
+stationary, visible, and not updating; the model's layer view must also be ready.
+These conditions must remain stable for two seconds. New tile requests,
+camera movement, or lighting/weather changes restart that settling interval.
+The panel reports the wait; Esc, Home, and scenario changes cancel it.
+If rendering cannot settle within 60 seconds, the effect stays hidden and shows
+a retry message rather than starting against an unfinished scene.
+
+Opening the hidden controls prepares the model without playing it or moving
+the camera. On Play, any remaining preparation overlaps the establishing
+camera flight instead of running before it. The status distinguishes loading
+the harbour's Gaussian splat from final rendering and settling. A cold scan
+view can still take tens of seconds; render readiness is not bypassed.
+
+Both modes use the same rigged mesh and root Three.js dependency. Run `npm ci`
+at the repository root; no nested install is required. Switching variants while
+idle reuses the loaded model. The selector is disabled during playback.
+
+The cinematic option uses a 110 m model, initially fully submerged, with a
+14-second eased rise. About 55 m of the final silhouette is above the surface.
+He faces the village from the beginning of the rise and approaches it, rather
+than facing the offshore camera. Both options share this orientation and path.
+The lower body stays hidden; the short approach and camera move are restrained.
+As the shoulders clear the water, the arms lift forward and outward, the elbows
+flex, and the wrists follow with a small delayed motion. Three slow, alternating
+strokes accompany the approach, then settle when the reveal finishes.
+The approach covers roughly 60 metres toward the village over 24 seconds,
+one cycle (about 20 metres) farther than the earlier preview at the same pace.
+The rise finishes at 19 seconds before the approach begins. The complete
+motion sequence lasts 43 seconds; any initial rendering wait adds to the wall-clock
+duration without shortening the rise, walk, or charge-up.
+There is no simulated walking in this option, no sound, no shake and no particles.
+The effect is not included in asset exposure or land sampling.
+
+## Blue dorsal charge-up
+
+The entire rise is uncharged, with no added blue color or glow. Walking begins
+at 19 seconds; the charge begins two seconds later, moving upward:
+tail at 21-27 seconds, middle back at 23-29 seconds, and upper plates at
+25-31 seconds. The slightly brighter cyan-blue glow then holds until reset.
+This adds no beam, sound, flashing, or attack.
+
+The supplied model uses one body material. Its 31 dorsal UV islands are split
+into three material regions without adding, removing, or moving any vertices
+or triangles. Skin, face, hands and teeth retain their original materials.
+Each plate region uses `MeshMaterialMetallicRoughness.emissiveColor`,
+`emissiveTexture`, and `emissiveStrength`. A grayscale copy of the diffuse
+atlas preserves surface detail without tinting the blue emission green.
+Uncharged regions explicitly have a black emissive color and zero strength.
+The charged color is RGB (64, 200, 255), with peak emissive strength 7.5,
+25% higher than the earlier preview.
+The source texture and GLB are not modified.
+
+This is rendered by the ArcGIS Maps SDK for JavaScript 5.1.12, using the
+existing `view.environment.lighting.glow` (`Glow`, intensity 0.85).
+The global glow setting and the asset-marker emission are not changed.
+The standalone gait study remains an animation review; use the Badouzi
+app to see the SDK's lighting and glow.
+
+## Model and credit
+
+Godzilla Minus One - Godzillasaurus by
+[Draco](https://sketchfab.com/Draco120),
+[source](https://sketchfab.com/3d-models/godzilla-minus-one-godzillasaurus-b1f63bb4b5c64ad1b8988f0ca48e3138),
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The derivative converts specular/glossiness to metallic/roughness materials,
+resizes textures to 2048 px, adds a baked wading gait, and applies runtime arm
+motion and dorsal emission. The original GLB is untouched.
+
+## Walking option
+
+Select **Slow wade** in the unlocked controls, select +3m, and press G or Play.
+The same reveal and camera
+path are used, but the approach evaluates a baked 6.4-second skeletal gait.
+Three cycles are synchronized with the travelled distance, ending with both
+feet planted. The camera can still be taken over manually.
+
+The native ArcGIS glTF importer does not play skeletal clips automatically.
+In both modes, Three.js evaluates the arm joints on the CPU and updates the positions,
+normals and tangents of a native ArcGIS Mesh. Vertex correspondence is checked
+before playback. ArcGIS remains responsible for drawing, depth, lighting and
+water reflections; no separate WebGL renderer is left running.
+The walking mode also plays the baked gait; the cinematic mode keeps the legs
+in their initial pose. Arm offsets are applied to a fresh base pose each frame,
+so replaying cannot accumulate joint rotations.
+
+The standalone [gait study](./walk-viewer.html) shows the whole body on a ground
+grid, with root travel synchronized to the feet and a tracking camera. It is
+for reviewing the gait, not a second version of the port.
+
+Both options now require animated-mesh updates and should be reviewed on the
+presentation machine before selecting one for a demo.
+Neither option includes physically simulated wakes or an underwater terrain model.
+Arm motion and dorsal emission are applied in the app; previously exported
+GLBs and videos are unchanged.
+
+### Blender recipe
+
+`build_walk.py` imports the supplied compatible model into Blender 4.2, adds
+two-bone IK controls and a weighted stance/swing gait, then verifies ankle
+targets, planted-foot drift and the loop seam before exporting.
+It saves an editable `.blend` with IK controls and a separate baked GLB.
+The output directory must be new; existing deliverables are not overwritten.
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
+  --python-exit-code 1 --python prototypes/godzilla/build_walk.py \
+  -- /absolute/path/to/compatible-model.glb /absolute/path/to/new-output
+```
+
+## Verification
+
+```sh
+node --test prototypes/godzilla/*.test.js
+npm test
+npm run build
+```
+
+The controller, Three.js and model are loaded only after the corner click,
+not during normal app startup. Vite emits the single animated GLB with the production
+`/Badouzi/` base. The standalone gait-study HTML and Blender recipe are not
+production entry points and are not linked from the public controls.

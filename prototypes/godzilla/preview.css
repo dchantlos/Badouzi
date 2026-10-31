@@ -1,0 +1,54 @@
+.godzilla-preview .godzilla-status {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.godzilla-preview .godzilla-credit {
+  margin: 9px 0 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.godzilla-preview a {
+  color: var(--accent, #35d4da);
+}
+.godzilla-preview button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.godzilla-preview[data-error="true"] .godzilla-status {
+  color: #ffbda9;
+}
+.godzilla-close {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+.godzilla-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.godzilla-mode select {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  color-scheme: dark;
+}
+.godzilla-mode select:focus-visible,
+.godzilla-close:focus-visible {
+  outline: 2px solid var(--accent);
+}

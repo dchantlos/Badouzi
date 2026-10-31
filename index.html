@@ -23,6 +23,8 @@
   <body>
     <!-- 3D Scene container -->
     <div id="viewDiv"></div>
+    <button id="godzillaUnlock" class="scene-secret" type="button" tabindex="-1"
+      aria-label="Reveal hidden scene controls" hidden></button>
 
     <!-- Cinematic intro overlay -->
     <div id="loadingOverlay">
@@ -116,7 +118,14 @@
               <span class="tool-icon" aria-hidden="true">&#10005;</span>
               <span class="tool-name">Clear</span>
             </button>
+            <button id="flightBtn" class="tool-btn tool-flight" type="button" aria-pressed="false"
+              title="Toggle smooth first-person drone mode (V)">
+              <span class="tool-icon" aria-hidden="true">&#8982;</span>
+              <span class="tool-name">Drone mode</span>
+              <kbd>V</kbd>
+            </button>
           </div>
+          <p id="flightStatus" class="flight-notice" role="status" hidden></p>
         </section>
       </aside>
     </div>

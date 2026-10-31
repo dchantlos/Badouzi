@@ -232,9 +232,32 @@ body {
 }
 
 .dock-panel {
-  flex: none;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 170, 230, 0.25) transparent;
   padding: 16px 18px 18px;
   animation: floatIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.scene-secret {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 120;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.scene-secret:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .dock-header {
