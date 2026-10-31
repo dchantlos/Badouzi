@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { createArmMotion } from "./arm-motion.js";
 import { HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
+import { waterContactBounds } from "./water-contact.js";
 import { DORSAL_REGIONS, dorsalEmission, partitionDorsalPlates } from "./dorsal-plates.js";
 import { HEIGHT_M, WALK_CYCLES, WATER_Z, sampleArmMotion, sampleReveal } from "./timeline.js";
 
@@ -238,6 +239,11 @@ export async function createAnimatedMonster(view, { walking }) {
   const backend = {
     get readyToDraw() {
       return layerView !== undefined && !layerView.updating && !layerView.suspended;
+    },
+    getWaterContact() {
+      const body = mesh.components.find(component => component.name === "Object_0");
+      if (!body?.faces) throw new Error("Godzilla's water-contact surface is missing");
+      return waterContactBounds(positions, body.faces, -mesh.transform.translation[2] / scale, scale);
     },
     update(state, seconds = 0) {
       if (!Number.isFinite(seconds) || seconds < 0) throw new RangeError("Godzilla's motion clock must be nonnegative and finite");

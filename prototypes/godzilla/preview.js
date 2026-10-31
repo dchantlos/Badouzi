@@ -22,6 +22,11 @@ export function setupGodzilla({
         <option value="walk">Slow wade</option>
       </select>
     </label>
+    <label class="godzilla-wake-option">
+      <input id="godzillaWake" type="checkbox" title="Enable before Play; reset to compare without it.">
+      Water wake (preview)
+    </label>
+    <p class="godzilla-wake-status" role="status" hidden></p>
     <p class="godzilla-status" role="status">Select +3m, then press G to reveal.</p>
     <div class="tool-grid">
       <button class="tool-btn" id="godzillaPlay" type="button">Play (G)</button>
@@ -40,8 +45,12 @@ export function setupGodzilla({
   const reset = panel.querySelector("#godzillaReset");
   const status = panel.querySelector(".godzilla-status");
   const variant = panel.querySelector("#godzillaMode");
+  const wakeToggle = panel.querySelector("#godzillaWake");
+  const wakeStatus = panel.querySelector(".godzilla-wake-status");
   let monster;
   let loading;
+  let wake;
+  let wakeLoading;
   let active = false;
   let generation = 0;
   let frame = 0;
@@ -59,6 +68,41 @@ export function setupGodzilla({
     play.disabled = getScenario() !== "+3m" || active;
     reset.disabled = !active;
     variant.disabled = active;
+    wakeToggle.disabled = active || !!wakeLoading;
+  }
+  function wakeMessage(message, error = false) {
+    wakeStatus.hidden = !message;
+    wakeStatus.textContent = message;
+    wakeStatus.dataset.error = String(error);
+  }
+  function failWake(error) {
+    console.warn("[Badouzi Digital Twin] Water wake study:", error);
+    wake?.dispose();
+    wake = null;
+    wakeToggle.checked = false;
+    wakeMessage(`Wake unavailable: ${error.message}. ArcGIS water is unchanged.`, true);
+    buttons();
+  }
+  function loadWake() {
+    if (wake) return Promise.resolve(wake);
+    wakeMessage("Preparing the wake preview...");
+    wakeLoading ??= import("./water-wake.js")
+      .then(({ createWaterWake }) => createWaterWake(view))
+      .then(loaded => {
+        if (disposed) {
+          loaded.dispose();
+          return null;
+        }
+        wake = loaded;
+        wakeMessage("Wake preview ready. Reset to change this setting.");
+        return wake;
+      })
+      .finally(() => {
+        wakeLoading = null;
+        if (!disposed) buttons();
+      });
+    buttons();
+    return wakeLoading;
   }
   function loadMonster() {
     if (monster) return Promise.resolve(monster);
@@ -105,6 +149,8 @@ export function setupGodzilla({
     if (cameraOwned) view.animation?.stop();
     cameraOwned = false;
     monster?.setVisible(false);
+    wake?.setVisible(false);
+    wake?.reset();
     savedCamera = null;
     if (camera) {
       cameraOwned = true;
@@ -140,10 +186,17 @@ export function setupGodzilla({
     panel.dataset.state = "loading";
     buttons();
     try {
-      const preparation = loadMonster().then(() => {
+      const water = wakeToggle.checked ? loadWake().catch(error => {
+        if (!disposed && wakeToggle.checked) failWake(error);
+      }) : Promise.resolve();
+      const preparation = Promise.all([loadMonster(), water]).then(() => {
         if (run !== generation || disposed || getScenario() !== "+3m") return;
         monster.update(sampleReveal(0));
         monster.setVisible(true);
+        if (wakeToggle.checked && wake) {
+          wake.reset();
+          wake.setVisible(true);
+        }
         if (cameraOwned) {
           say("Framing the harbour...");
           panel.dataset.state = "framing";
@@ -160,11 +213,16 @@ export function setupGodzilla({
           layerView.visible && layerView.updating && layerView.layer.type === "gaussian-splat")) {
           return "Loading the harbour's 3D scan for this view...";
         }
-        if (view.updating || !monster.readyToDraw) return "Finishing the scenery, model and water...";
+        if (view.updating || !monster.readyToDraw || (wakeToggle.checked && wake && !wake.readyToDraw)) {
+          return "Finishing the scenery, model and water...";
+        }
         return "Scene rendered. Letting the water settle...";
       }, message => say(message), { initial: true });
       try {
-        await waitForSceneReady(view, monster, { signal: controller.signal });
+        const sceneContent = {
+          get readyToDraw() { return monster.readyToDraw && (!wakeToggle.checked || !wake || wake.readyToDraw); }
+        };
+        await waitForSceneReady(view, sceneContent, { signal: controller.signal });
       } finally {
         waitStatus.remove();
       }
@@ -181,6 +239,13 @@ export function setupGodzilla({
           time = Math.min(elapsed, DURATION_S);
           const state = sampleReveal(time);
           monster.update(state, elapsed);
+          if (wakeToggle.checked && wake) {
+            try {
+              wake.update(state, elapsed, () => monster.getWaterContact());
+            } catch (error) {
+              failWake(error);
+            }
+          }
           if (panel.dataset.state !== "holding") {
             if (variant.value === "reveal" && cameraOwned) {
               const camera = sampleCinematicCamera(time);
@@ -228,6 +293,14 @@ export function setupGodzilla({
   document.addEventListener("keydown", keydown);
   play.addEventListener("click", onPlay);
   reset.addEventListener("click", onReset);
+  wakeToggle.addEventListener("change", () => {
+    if (wakeToggle.checked) loadWake().catch(error => { if (!disposed && wakeToggle.checked) failWake(error); });
+    else {
+      wake?.setVisible(false);
+      wake?.reset();
+      wakeMessage("");
+    }
+  });
   panel.querySelector("#godzillaClose").addEventListener("click", onClose);
   buttons();
   say("Preparing the model. Select +3m, then Play.");
@@ -258,6 +331,7 @@ export function setupGodzilla({
       disposed = true;
       stop(false);
       monster?.dispose();
+      wake?.dispose();
       interaction.remove();
       document.removeEventListener("keydown", keydown);
       panel.remove();

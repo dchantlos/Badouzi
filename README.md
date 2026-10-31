@@ -109,3 +109,23 @@ clicked again.
 The effect is fictional and excluded from exposure calculations. No hosted
 ArcGIS content is modified. See the [effect documentation](./prototypes/godzilla/README.md)
 for choreography, rendering, model attribution and the editable Blender recipe.
+
+## Optional water-wake study
+
+The hidden Godzilla controls include **Water wake (preview)**, off by default.
+Enable it before Play. Reset before switching it off to compare with the
+original ArcGIS water.
+
+This is a local visual experiment: Three.js generates the wake geometry and
+normals, and ArcGIS renders it with the existing scene lighting and depth.
+The model's actual waterline supplies the disturbance footprint. Bow
+disturbances, outward-spreading wake trails and foam remain in world space
+and fade after movement stops.
+
+The native water surface, reflections, water-level scenarios and exposure
+calculations are not replaced. This is not a fluid solver or a calibrated
+wave/flood simulation.
+
+The complete verified pre-wake implementation is saved locally as tag
+`godzilla-motion-before-water-wake`, at commit
+`bbad6bd20180b26667698cd548d429365ad69e46`. No water experiment has been published.

@@ -157,6 +157,37 @@ npm test
 npm run build
 ```
 
+## Optional wake experiment
+
+**Water wake (preview)** is opt-in, and its setting is locked during playback.
+Reset before changing it. The default-off state does not load the wake.
+Once loaded, switching it off hides the cached geometry and stops its updates;
+closing the controls releases it.
+The saved pre-wake baseline is the local tag `godzilla-motion-before-water-wake`
+(`bbad6bd20180b26667698cd548d429365ad69e46`).
+
+Three.js supplies the plane geometry and recalculated normals. A native
+ArcGIS Mesh renders the displaced crests and alpha-blended foam, rather than
+running a second renderer that cannot automatically reflect ArcGIS content.
+The existing WaterSymbol3DLayer, native model reflections, lighting and Glow
+remain unchanged.
+
+Triangle/water-plane intersections of the animated body locate the contact
+footprint. Motion and emergence drive a bounded history of disturbances,
+including a bow crest, two divergent trails and fading foam. The grid is
+anchored at the original stopping point, so old disturbances stay behind
+instead of moving as a texture attached to the creature. It has 10,125 vertices,
+updates at up to 15 Hz, and its trails fade over 18 seconds after their emission.
+Reset, Home, scenario changes and closing the controls remove the effect.
+The overlay is excluded from inspection and wheel-zoom picking.
+
+This is a procedural visual study, not fluid dynamics. It does not deform
+the underlying ArcGIS water or re-simulate its reflections/refraction, and it
+does not contribute to the exposure calculation. Keep it off for the saved
+baseline presentation until its appearance and performance have been reviewed.
+The local CPU benchmark measured roughly 13 ms per wake update, including
+contact sampling; this is additional work and not a GPU/frame-rate guarantee.
+
 The controller, Three.js and model are loaded only after the corner click,
 not during normal app startup. Vite emits the single animated GLB with the production
 `/Badouzi/` base. The standalone gait-study HTML and Blender recipe are not

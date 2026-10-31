@@ -1768,7 +1768,9 @@ function initApp() {
 
       let response;
       try {
-        response = await view.hitTest(event);
+        response = await view.hitTest(event, {
+          exclude: view.map.allLayers.filter(layer => layer.id === "godzilla-wake-study").toArray()
+        });
       } catch (e) {
         response = { results: [] };
       }
