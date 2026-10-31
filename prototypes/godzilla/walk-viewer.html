@@ -33,7 +33,8 @@
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { createArmMotion } from "./arm-motion.js";
-      import { WALK_CYCLES, sampleArmMotion } from "./timeline.js";
+      import { createHeadMotion, sampleHeadMotion } from "./head-motion.js";
+      import { APPROACH_START_S, WALK_CYCLES, sampleArmMotion } from "./timeline.js";
 
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(innerWidth, innerHeight);
@@ -82,14 +83,18 @@
         const mixer = new THREE.AnimationMixer(gltf.scene);
         mixer.clipAction(clip).play();
         const armMotion = createArmMotion(gltf.scene);
+        const headMotion = createHeadMotion(gltf.scene);
         const approachCycleDuration = clip.duration * WALK_CYCLES;
         function applyPose(time) {
           armMotion.restore();
+          headMotion.restore();
           mixer.setTime(time);
-          armMotion.apply(sampleArmMotion({
+          const state = {
             rise: 1,
             approach: (time % approachCycleDuration) / approachCycleDuration
-          }));
+          };
+          armMotion.apply(sampleArmMotion(state));
+          headMotion.apply(sampleHeadMotion({ ...state, seconds: time + APPROACH_START_S }));
         }
         applyPose(0);
         gltf.scene.traverse(object => {

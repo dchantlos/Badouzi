@@ -16,6 +16,7 @@ import Point from "@arcgis/core/geometry/Point.js";
 import Glow from "@arcgis/core/webscene/Glow.js";
 import { createWeatherPanel } from "./weather.js";
 import { setupFlight } from "./flight.js";
+import { setupSmoothZoom } from "./smooth-zoom.js";
 import {
   evaluateScenario,
   formatUSD,
@@ -596,6 +597,7 @@ function initApp() {
   let closeInspector = function () {};
   let godzilla = null;
   let flight = null;
+  let smoothZoom = null;
 
   /** True for the what-if scenarios that have an analysis water surface. */
   function isSurgeScenario(title) {
@@ -2050,9 +2052,20 @@ function initApp() {
       flight = setupFlight({
         view,
         onEnter() {
+          smoothZoom?.cancel();
           godzilla?.takeOverCamera();
           tools.clear();
           closeInspector();
+        }
+      });
+      smoothZoom = setupSmoothZoom({
+        view,
+        isEnabled: () => !flight.isActive(),
+        onStart: () => godzilla?.takeOverCamera(),
+        onError(error) {
+          log("Smooth wheel zoom failed; standard zoom restored", error);
+          setText("flightStatus", "Smooth zoom unavailable; standard wheel zoom restored. See the browser console.");
+          setHidden("flightStatus", false);
         }
       });
       setupAssetInspector(tools);

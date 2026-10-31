@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { APPROACH_START_S, DURATION_S, END, HEIGHT_M, RISE_END_S, START, VILLAGE_TARGET, WALK_CYCLES, WATER_Z, sampleReveal } from "./timeline.js";
+import { APPROACH_START_S, CAMERA_START, DURATION_S, END, HEIGHT_M, RISE_END_S, START, VILLAGE_TARGET, WALK_CYCLES, WATER_Z, sampleReveal } from "./timeline.js";
 
 test("the establishing shot keeps the entire model below water", () => {
   for (const time of [-1, 0, 3, 5]) {
@@ -31,11 +31,18 @@ test("rise and approach are monotonic, bounded, and do not bounce", () => {
   }
 });
 
-test("the approach starts only after the rise has finished", () => {
-  assert.equal(APPROACH_START_S, RISE_END_S);
-  for (const time of [0, 5, 16, RISE_END_S]) assert.equal(sampleReveal(time).approach, 0);
-  assert.equal(sampleReveal(APPROACH_START_S).rise, 1);
-  assert(sampleReveal(APPROACH_START_S + 0.1).approach > 0);
+test("forward walking begins with the rise, not after emergence", () => {
+  assert.equal(APPROACH_START_S, 5);
+  for (const time of [0, 4, 5]) assert.equal(sampleReveal(time).approach, 0);
+  for (const time of [6, 10, 14, 18]) {
+    const state = sampleReveal(time);
+    assert(state.approach > 0);
+    assert(state.rise > 0 && state.rise < 1);
+    assert(state.y < START.y);
+  }
+  const emerged = sampleReveal(RISE_END_S);
+  const travel = Math.hypot(emerged.x - START.x, emerged.y - START.y) / Math.cosh(START.y / 6378137);
+  assert(travel > 30, `Only ${travel} metres of forward travel during emergence`);
 });
 
 test("the completed reveal holds still rather than looping", () => {
@@ -66,20 +73,40 @@ test("the model faces the village throughout the rise and approaches it", () => 
   assert(sampleReveal(0).heading >= 0 && sampleReveal(0).heading < 15);
 });
 
-test("the longer approach keeps travel distance synchronized to three gait cycles", () => {
-  assert.equal(WALK_CYCLES, 3);
+test("the offshore extension keeps the baked stride synchronized to five gait cycles", () => {
+  assert.equal(WALK_CYCLES, 5);
   const distancePerCycle = Math.hypot(END.x - START.x, END.y - START.y) / WALK_CYCLES;
   assert(Math.abs(distancePerCycle - Math.hypot(20, 40) / 2) < 1e-8);
 });
 
-test("separating the rise and walk preserves the three-cycle distance and pace", () => {
+test("the farther start keeps the exact previous stopping point and duration", () => {
+  assert.deepEqual(END, { x: 13557768.969325766, y: 2893638.189589372 });
+  assert.equal(sampleReveal(DURATION_S).x, END.x);
+  assert.equal(sampleReveal(DURATION_S).y, END.y);
+  const farther = Math.hypot(START.x - 13557775, START.y - 2893705) / Math.cosh(START.y / 6378137);
+  assert(farther > 39 && farther < 42);
   assert.equal(DURATION_S, 43);
-  assert.equal(DURATION_S - APPROACH_START_S, 24);
-  const distance = Math.hypot(END.x - START.x, END.y - START.y);
-  assert(Math.abs(distance / (DURATION_S - APPROACH_START_S) - Math.hypot(20, 40) / 16) < 1e-8);
+  assert.equal(DURATION_S - APPROACH_START_S, 38);
   assert.equal(sampleReveal(32).done, false);
   assert(sampleReveal(32).approach < 1);
   assert.equal(sampleReveal(DURATION_S).done, true);
+});
+
+test("the wade accelerates gently, cruises steadily and plants at the stop", () => {
+  const step = 0.1;
+  const delta = time => sampleReveal(time + step).approach - sampleReveal(time).approach;
+  assert(delta(5) < delta(6));
+  assert(delta(6) < delta(8));
+  assert(Math.abs(delta(12) - delta(30)) < 1e-12);
+  assert(delta(42) < delta(40));
+  assert(delta(42.9) < delta(42));
+  assert.equal(sampleReveal(43).approach, 1);
+});
+
+test("the opening shot is angled enough to show forward travel during the rise", () => {
+  const bearing = Math.atan2(CAMERA_START.position.x - START.x, CAMERA_START.position.y - START.y) * 180 / Math.PI;
+  const difference = bearing - sampleReveal(0).heading;
+  assert(difference > 25 && difference < 40);
 });
 
 test("dorsal emission charges from the tail upward after emergence without flashing", () => {

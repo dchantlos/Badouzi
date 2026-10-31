@@ -4,6 +4,7 @@ import * as reactiveUtils from "@arcgis/core/core/reactiveUtils.js";
 import {
   FLIGHT_KEYS, createFlightMotion, changeFlightSpeed, haltFlight, lookFlight, stepFlight
 } from "./flight-motion.js";
+import { wheelDeltaPixels } from "./zoom-motion.js";
 import "./flight.css";
 
 export function setupFlight({ view, onEnter }) {
@@ -215,8 +216,7 @@ export function setupFlight({ view, onEnter }) {
   function wheel(event) {
     if (!active || !sceneTarget(event.target) || dialogOpen()) return;
     event.preventDefault();
-    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1;
-    changeFlightSpeed(state, event.deltaY * scale);
+    changeFlightSpeed(state, wheelDeltaPixels(event.deltaY, event.deltaMode, container.clientHeight));
   }
   function mousedown(event) {
     if (!active || locked || !cursorFree || !sceneTarget(event.target) || dialogOpen()) return;

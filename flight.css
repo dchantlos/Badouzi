@@ -1,9 +1,6 @@
 .tool-flight {
   grid-column: 1 / -1;
 }
-.tool-flight kbd {
-  margin-left: auto;
-}
 .flight-notice {
   margin-top: 8px;
   color: var(--coral);
@@ -25,8 +22,7 @@
   flex-wrap: wrap;
   gap: 6px 12px;
 }
-.flight-help kbd,
-.tool-flight kbd {
+.flight-help kbd {
   padding: 1px 4px;
   border: 1px solid var(--glass-border);
   border-radius: 4px;

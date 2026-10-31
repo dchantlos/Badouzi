@@ -1,24 +1,24 @@
 export const HEIGHT_M = 110;
 export const WATER_Z = 5;
-export const WALK_CYCLES = 3;
+export const WALK_CYCLES = 5;
 export const RISE_END_S = 19;
-export const APPROACH_START_S = RISE_END_S;
-const CHARGE_START_S = APPROACH_START_S + 2;
-export const DURATION_S = APPROACH_START_S + WALK_CYCLES * 8;
-export const START = { x: 13557775, y: 2893705 };
+export const APPROACH_START_S = 5;
+export const CHARGE_START_S = RISE_END_S + 2;
+export const DURATION_S = 43;
+export const END = { x: 13557768.969325766, y: 2893638.189589372 };
 export const VILLAGE_TARGET = { x: 13557724, y: 2893140 };
-const villageDistance = Math.hypot(VILLAGE_TARGET.x - START.x, VILLAGE_TARGET.y - START.y);
-// The baked stride covers half the original two-cycle projected path.
+const villageDistance = Math.hypot(VILLAGE_TARGET.x - END.x, VILLAGE_TARGET.y - END.y);
+// Keep the established stopping point and baked stride; extend only offshore.
 const approachDistance = Math.hypot(20, 40) / 2 * WALK_CYCLES;
-export const END = {
-  x: START.x + (VILLAGE_TARGET.x - START.x) / villageDistance * approachDistance,
-  y: START.y + (VILLAGE_TARGET.y - START.y) / villageDistance * approachDistance
+export const START = {
+  x: END.x - (VILLAGE_TARGET.x - END.x) / villageDistance * approachDistance,
+  y: END.y - (VILLAGE_TARGET.y - END.y) / villageDistance * approachDistance
 };
 
 export const CAMERA_START = {
-  position: { x: 13557909, y: 2894087, z: 211, spatialReference: { wkid: 3857 } },
-  heading: 195,
-  tilt: 62
+  position: { x: START.x + 300, y: START.y + 382, z: 211, spatialReference: { wkid: 3857 } },
+  heading: 215,
+  tilt: 66
 };
 export const CAMERA_END = {
   position: { x: 13557890, y: 2894020, z: 190, spatialReference: { wkid: 3857 } },
@@ -29,6 +29,17 @@ export const CAMERA_END = {
 function smoothstep(t) {
   const u = Math.max(0, Math.min(1, t));
   return u * u * (3 - 2 * u);
+}
+
+function approachProgress(seconds) {
+  const duration = DURATION_S - APPROACH_START_S;
+  const elapsed = Math.max(0, Math.min(duration, seconds - APPROACH_START_S));
+  const ramp = 4;
+  // Integrate smoothstep velocity: ease into a steady wade, then ease to a stop.
+  const integral = u => u * u * u - u * u * u * u / 2;
+  if (elapsed < ramp) return ramp * integral(elapsed / ramp) / (duration - ramp);
+  if (elapsed > duration - ramp) return 1 - ramp * integral((duration - elapsed) / ramp) / (duration - ramp);
+  return (elapsed - ramp / 2) / (duration - ramp);
 }
 
 export function sampleArmMotion({ rise, approach }) {
@@ -53,7 +64,7 @@ export function sampleArmMotion({ rise, approach }) {
 export function sampleReveal(seconds) {
   if (!Number.isFinite(seconds)) throw new TypeError("Reveal time must be finite");
   const rise = smoothstep((seconds - 5) / (RISE_END_S - 5));
-  const approach = smoothstep((seconds - APPROACH_START_S) / (DURATION_S - APPROACH_START_S));
+  const approach = approachProgress(seconds);
   return {
     x: START.x + (END.x - START.x) * approach,
     y: START.y + (END.y - START.y) * approach,

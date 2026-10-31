@@ -12,7 +12,7 @@ hides the effect and disables G until the corner is clicked again.
 
 **Esc** resets, restoring the previous camera only if the effect still owns
 it. **Home view** hides the effect and returns home. Changing to another
-scenario also removes it. Dragging or pressing **V** takes over the camera
+scenario also removes it. Dragging, wheel zoom or pressing **V** takes over the camera
 without interrupting the creature. Starting while drone mode is active skips
 automatic camera flights. Exiting drone mode never resumes those flights.
 While flying, Esc belongs to navigation first; the Reset button remains
@@ -41,22 +41,41 @@ The cinematic option uses a 110 m model, initially fully submerged, with a
 14-second eased rise. About 55 m of the final silhouette is above the surface.
 He faces the village from the beginning of the rise and approaches it, rather
 than facing the offshore camera. Both options share this orientation and path.
-The lower body stays hidden; the short approach and camera move are restrained.
+The lower body stays hidden. At 21 seconds, when charging begins, the cinematic
+camera moves into a close side/three-quarter shot over six seconds, tracks the
+creature for only two seconds, then immediately continues the move. From 29 to 41 seconds it pulls back and rises
+into an elevated rear view, holding that composition before the 43-second end.
+The camera and its aim point move together, so the head and dorsal plates stay
+framed as Godzilla approaches the village.
 As the shoulders clear the water, the arms lift forward and outward, the elbows
-flex, and the wrists follow with a small delayed motion. Three slow, alternating
+flex, and the wrists follow with a small delayed motion. Five slow, alternating
 strokes accompany the approach, then settle when the reveal finishes.
-The approach covers roughly 60 metres toward the village over 24 seconds,
-one cycle (about 20 metres) farther than the earlier preview at the same pace.
-The rise finishes at 19 seconds before the approach begins. The complete
-motion sequence lasts 43 seconds; any initial rendering wait adds to the wall-clock
-duration without shortening the rise, walk, or charge-up.
-There is no simulated walking in this option, no sound, no shake and no particles.
+The four neck joints lead deliberate head turns and a stronger chin lift;
+the skull follows with a slight lag instead of pivoting as a rigid block.
+The jaw closes slightly, opens visibly with the charge, then relaxes into
+quiet breathing after the main sequence ends. The head stays aimed generally
+toward the village; there is no exaggerated head shaking or talking-mouth loop.
+Head-only frames re-skin only neck/head-influenced vertices, leaving the frozen
+body, arms, feet, placement and final camera untouched. Idle breathing uses a
+lighter 15 Hz pose cadence; the reveal retains 30 Hz head poses.
+Both variants walk forward from 5 to 43 seconds, including throughout the
+14-second rise. Five stride-matched gait cycles cover roughly 100 metres,
+with gentle four-second acceleration and deceleration ramps. The starting
+point is about 40 metres farther offshore; the previous stopping point
+(13557768.969325766, 2893638.189589372 in Web Mercator) is unchanged.
+He advances roughly 35 metres while emerging, rather than rising in place.
+The establishing camera shifts offshore with the new start and uses a
+three-quarter rear angle so the forward travel is visible. The close-up,
+rear pullback and final view still follow the creature.
+Any initial rendering wait adds to wall-clock time without consuming the
+43-second sequence. There is no sound, shake or particle effect.
 The effect is not included in asset exposure or land sampling.
 
 ## Blue dorsal charge-up
 
-The entire rise is uncharged, with no added blue color or glow. Walking begins
-at 19 seconds; the charge begins two seconds later, moving upward:
+The entire rise is uncharged, with no added blue color or glow. Walking starts
+with the rise at 5 seconds; the rise ends at 19 seconds and charging begins
+two seconds later, moving upward:
 tail at 21-27 seconds, middle back at 23-29 seconds, and upper plates at
 25-31 seconds. The slightly brighter cyan-blue glow then holds until reset.
 This adds no beam, sound, flashing, or attack.
@@ -91,19 +110,20 @@ motion and dorsal emission. The original GLB is untouched.
 ## Walking option
 
 Select **Slow wade** in the unlocked controls, select +3m, and press G or Play.
-The same reveal and camera
-path are used, but the approach evaluates a baked 6.4-second skeletal gait.
-Three cycles are synchronized with the travelled distance, ending with both
+The same rise, route and glow timing are used, but the camera keeps the
+restrained offshore approach rather than the cinematic close-up and rear
+pullback. The approach evaluates a baked 6.4-second skeletal gait.
+Five cycles are synchronized with the travelled distance, ending with both
 feet planted. The camera can still be taken over manually.
 
 The native ArcGIS glTF importer does not play skeletal clips automatically.
-In both modes, Three.js evaluates the arm joints on the CPU and updates the positions,
+In both modes, Three.js evaluates the gait, arm and head joints on the CPU and updates the positions,
 normals and tangents of a native ArcGIS Mesh. Vertex correspondence is checked
 before playback. ArcGIS remains responsible for drawing, depth, lighting and
 water reflections; no separate WebGL renderer is left running.
-The walking mode also plays the baked gait; the cinematic mode keeps the legs
-in their initial pose. Arm offsets are applied to a fresh base pose each frame,
-so replaying cannot accumulate joint rotations.
+Both modes play the baked gait; they differ in camera choreography.
+Arm and head offsets are applied to a fresh base pose each frame, so replaying
+cannot accumulate joint rotations.
 
 The standalone [gait study](./walk-viewer.html) shows the whole body on a ground
 grid, with root travel synchronized to the feet and a tracking camera. It is
@@ -112,7 +132,7 @@ for reviewing the gait, not a second version of the port.
 Both options now require animated-mesh updates and should be reviewed on the
 presentation machine before selecting one for a demo.
 Neither option includes physically simulated wakes or an underwater terrain model.
-Arm motion and dorsal emission are applied in the app; previously exported
+Arm/head motion and dorsal emission are applied in the app; previously exported
 GLBs and videos are unchanged.
 
 ### Blender recipe

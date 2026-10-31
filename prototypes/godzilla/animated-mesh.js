@@ -7,6 +7,7 @@ import MeshTexture from "@arcgis/core/geometry/support/MeshTexture.js";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { createArmMotion } from "./arm-motion.js";
+import { HEAD_BONES, createHeadMotion, sampleHeadMotion } from "./head-motion.js";
 import { DORSAL_REGIONS, dorsalEmission, partitionDorsalPlates } from "./dorsal-plates.js";
 import { HEIGHT_M, WALK_CYCLES, WATER_Z, sampleArmMotion, sampleReveal } from "./timeline.js";
 
@@ -129,6 +130,11 @@ export async function createAnimatedMonster(view, { walking }) {
   const mixer = new THREE.AnimationMixer(gltf.scene);
   mixer.clipAction(clip).play();
   const armMotion = createArmMotion(gltf.scene);
+  const headMotion = createHeadMotion(gltf.scene);
+  const headBones = new Set();
+  gltf.scene.getObjectByName(HEAD_BONES.neckBase).traverse(object => {
+    if (object.isBone) headBones.add(object);
+  });
   const layer = new GraphicsLayer({
     title: "Godzilla (fictional effect)",
     visible: false,
@@ -147,25 +153,47 @@ export async function createAnimatedMonster(view, { walking }) {
   const skinIndices = new THREE.Vector4();
   const skinWeights = new THREE.Vector4();
   const boneMatrix = new THREE.Matrix4();
-  const resources = parts.map(object => ({
-    object,
-    boneNormals: object.skeleton.bones.map(() => new THREE.Matrix3()),
-    bindNormal: new THREE.Matrix3().getNormalMatrix(object.bindMatrix),
-    bindInverseNormal: new THREE.Matrix3().getNormalMatrix(object.bindMatrixInverse),
-    worldNormal: new THREE.Matrix3().getNormalMatrix(object.matrixWorld)
-  }));
+  let vertexOffset = 0;
+  const resources = parts.map(object => {
+    const { attributes } = object.geometry;
+    const headVertices = [];
+    for (let index = 0; index < attributes.position.count; index++) {
+      skinIndices.fromBufferAttribute(attributes.skinIndex, index);
+      skinWeights.fromBufferAttribute(attributes.skinWeight, index);
+      for (let component = 0; component < 4; component++) {
+        if (skinWeights.getComponent(component) > 0 &&
+          headBones.has(object.skeleton.bones[skinIndices.getComponent(component)])) {
+          headVertices.push(index);
+          break;
+        }
+      }
+    }
+    const resource = {
+      object, headVertices, vertexOffset,
+      boneNormals: object.skeleton.bones.map(() => new THREE.Matrix3()),
+      bindNormal: new THREE.Matrix3().getNormalMatrix(object.bindMatrix),
+      bindInverseNormal: new THREE.Matrix3().getNormalMatrix(object.bindMatrixInverse),
+      worldNormal: new THREE.Matrix3().getNormalMatrix(object.matrixWorld)
+    };
+    vertexOffset += attributes.position.count;
+    return resource;
+  });
   let lastPose = -1;
   let lastRise = -1;
   let lastArmFrame = -1;
+  let lastHeadTime = -1;
+  let lastPlacement;
   const totalPoseFrames = Math.round(clip.duration * WALK_CYCLES * 30);
 
-  function deform(time, armState) {
+  function deform(time, armState, headPose, headOnly) {
     armMotion.restore();
+    headMotion.restore();
     mixer.setTime(time);
     armMotion.apply(sampleArmMotion(armState));
+    headMotion.apply(headPose);
     gltf.scene.updateMatrixWorld(true);
-    let destination = 0;
-    for (const { object, boneNormals, bindNormal, bindInverseNormal, worldNormal } of resources) {
+    for (const { object, headVertices, vertexOffset, boneNormals, bindNormal, bindInverseNormal, worldNormal } of resources) {
+      if (headOnly && !headVertices.length) continue;
       const { skeleton, geometry } = object;
       skeleton.update();
       for (let index = 0; index < boneNormals.length; index++) {
@@ -173,7 +201,10 @@ export async function createAnimatedMonster(view, { walking }) {
         boneNormals[index].getNormalMatrix(boneMatrix);
       }
       const attributes = geometry.attributes;
-      for (let index = 0; index < attributes.position.count; index++, destination++) {
+      const count = headOnly ? headVertices.length : attributes.position.count;
+      for (let cursor = 0; cursor < count; cursor++) {
+        const index = headOnly ? headVertices[cursor] : cursor;
+        const destination = vertexOffset + index;
         object.getVertexPosition(index, vertex).applyMatrix4(object.matrixWorld);
         positions[destination * 3] = vertex.x;
         positions[destination * 3 + 1] = -vertex.z;
@@ -208,23 +239,33 @@ export async function createAnimatedMonster(view, { walking }) {
     get readyToDraw() {
       return layerView !== undefined && !layerView.updating && !layerView.suspended;
     },
-    update(state) {
+    update(state, seconds = 0) {
+      if (!Number.isFinite(seconds) || seconds < 0) throw new RangeError("Godzilla's motion clock must be nonnegative and finite");
       const armFrame = Math.round(state.approach * totalPoseFrames);
       const pose = walking ? armFrame / 30 : 0;
       const rise = Math.round(state.rise * 256) / 256;
-      if (pose !== lastPose || rise !== lastRise || armFrame !== lastArmFrame) {
-        deform(pose, { rise, approach: armFrame / totalPoseFrames });
+      const headRate = state.done ? 15 : 30;
+      const headTime = rise > 0.15 ? Math.round(seconds * headRate) / headRate : 0;
+      const bodyChanged = pose !== lastPose || rise !== lastRise || armFrame !== lastArmFrame;
+      if (bodyChanged || headTime !== lastHeadTime) {
+        const armState = { rise, approach: armFrame / totalPoseFrames };
+        deform(pose, armState, sampleHeadMotion({ ...armState, seconds: headTime }), !bodyChanged);
         lastPose = pose;
         lastRise = rise;
         lastArmFrame = armFrame;
+        lastHeadTime = headTime;
       }
-      mesh.vertexSpace.origin = [state.x, state.y, WATER_Z];
-      mesh.transform = {
-        scale: [scale, scale, scale],
-        rotationAxis: [0, 0, 1],
-        rotationAngle: -state.heading,
-        translation: [0, 0, -HEIGHT_M * (state.anchorZ + 0.5) - sourceMinZ * scale]
-      };
+      const placement = [state.x, state.y, state.heading, state.anchorZ];
+      if (!lastPlacement || placement.some((value, index) => value !== lastPlacement[index])) {
+        mesh.vertexSpace.origin = [state.x, state.y, WATER_Z];
+        mesh.transform = {
+          scale: [scale, scale, scale],
+          rotationAxis: [0, 0, 1],
+          rotationAngle: -state.heading,
+          translation: [0, 0, -HEIGHT_M * (state.anchorZ + 0.5) - sourceMinZ * scale]
+        };
+        lastPlacement = placement;
+      }
       updateDorsalEmission(state.glow);
     },
     setVisible(visible) {

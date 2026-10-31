@@ -50,6 +50,18 @@ selectors or the assumptions panel. Losing focus stops movement.
 If the browser cannot capture the mouse, a visible message explains the
 drag-to-look fallback.
 
+## Mouse-wheel zoom
+
+Outside Drone mode, the wheel smoothly dollies toward or away from the surface
+under the cursor. Wheel notches accumulate into one eased movement instead of
+restarting a large zoom step. Trackpad and line/page wheel units are normalized.
+When the pointer is over the sky, the view centre is used instead.
+
+Dragging, Home/native camera flights, entering Drone mode, or losing focus
+cancels the remaining zoom. Scrolling over the side panels stays normal.
+The camera field of view, lighting and visual quality are unchanged.
+Inside Drone mode the wheel still adjusts cruise speed, not zoom.
+
 ## Hidden Godzilla effect
 
 Click the invisible **20 x 20 pixel area at the extreme top-right corner** of
@@ -63,6 +75,25 @@ creature. Starting while already flying leaves the pilot's camera in place.
 Stay still while the scene settles; the creature remains submerged and unlit
 until rendering is ready. Leaving drone mode does not resume a scripted
 camera flight.
+
+**Cinematic rise** now has a distinct camera sequence: at the start of charging
+(21 seconds), it eases into a close side/three-quarter view, tracks Godzilla
+briefly through the charge, then pulls back and rises into an elevated rear
+view from 29 to 41 seconds. The close-up holds for only two seconds.
+**Slow wade** retains its wider offshore camera. Both variants now use the
+baked wading gait throughout the rise and approach. The start is about 40 m
+farther offshore, but the final stopping coordinates and 43-second duration
+are unchanged. He travels roughly 35 m toward the village while emerging,
+instead of rising vertically in place. The opening camera uses a three-quarter
+rear angle to make that forward travel visible. The blue charge still waits until
+after the unlit rise is complete.
+
+Both variants have stronger neck-led head turns, a deliberate chin lift and
+a visible jaw opening during the charge, then settle into gentle breathing.
+The head continues a quiet idle after the sequence while the body and camera
+hold still.
+Dragging, wheel zoom or V relinquishes scripted camera control for the rest
+of that playback; the creature keeps moving.
 
 On a cold view, streaming the harbour's Gaussian splat can take tens of seconds.
 The status names this stage explicitly. Model preparation overlaps the camera

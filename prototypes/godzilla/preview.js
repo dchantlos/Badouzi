@@ -1,5 +1,7 @@
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils.js";
-import { APPROACH_START_S, CAMERA_START, CAMERA_END, DURATION_S, sampleReveal } from "./timeline.js";
+import Camera from "@arcgis/core/Camera.js";
+import { CAMERA_START, CAMERA_END, DURATION_S, RISE_END_S, sampleReveal } from "./timeline.js";
+import { sampleCinematicCamera } from "./cinematic-camera.js";
 import { waitForSceneReady } from "./scene-ready.js";
 import "./preview.css";
 
@@ -61,7 +63,7 @@ export function setupGodzilla({
   function loadMonster() {
     if (monster) return Promise.resolve(monster);
     loading ??= import("./animated-mesh.js")
-      .then(({ createAnimatedMonster }) => createAnimatedMonster(view, { walking: false }))
+      .then(({ createAnimatedMonster }) => createAnimatedMonster(view, { walking: true }))
       .then(loaded => {
         if (disposed) {
           loaded.dispose();
@@ -140,7 +142,6 @@ export function setupGodzilla({
     try {
       const preparation = loadMonster().then(() => {
         if (run !== generation || disposed || getScenario() !== "+3m") return;
-        monster.setWalking(variant.value === "walk");
         monster.update(sampleReveal(0));
         monster.setVisible(true);
         if (cameraOwned) {
@@ -173,20 +174,25 @@ export function setupGodzilla({
       // Framing and resource loading never consume the creature's motion clock.
       const started = performance.now();
       let closingMove = false;
-      function tick(now) {
+      function tick() {
         if (run !== generation || disposed) return;
         try {
-          time = 4 + (now - started) / 1000;
+          const elapsed = 4 + (performance.now() - started) / 1000;
+          time = Math.min(elapsed, DURATION_S);
           const state = sampleReveal(time);
-          monster.update(state);
-          if (time >= APPROACH_START_S && !closingMove) {
-            closingMove = true;
-            if (cameraOwned) fly(CAMERA_END, 11000).catch(fail);
-          }
-          if (state.done) {
-            panel.dataset.state = "holding";
-            say("Reveal complete. Explore freely; Reset hides the creature.");
-            return;
+          monster.update(state, elapsed);
+          if (panel.dataset.state !== "holding") {
+            if (variant.value === "reveal" && cameraOwned) {
+              const camera = sampleCinematicCamera(time);
+              if (camera) view.camera = new Camera(camera);
+            } else if (variant.value === "walk" && time >= RISE_END_S && !closingMove) {
+              closingMove = true;
+              if (cameraOwned) fly(CAMERA_END, 11000).catch(fail);
+            }
+            if (state.done) {
+              panel.dataset.state = "holding";
+              say("Reveal complete. Explore freely; Reset hides the creature.");
+            }
           }
           frame = requestAnimationFrame(tick);
         } catch (error) {
